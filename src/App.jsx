@@ -427,7 +427,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [user, setUser]                 = useState(null);
+  const [user, setUser]                 = useState(() => { try { return JSON.parse(localStorage.getItem('log_session')) || null; } catch { return null; } });
   const [users, setUsers]               = useState([]);
   const [logs, setLogs]                 = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -481,10 +481,11 @@ export default function App() {
     const hash  = await sha256(loginPass);
     const found = users.find(u => u.username === loginUser && u.password === hash);
     if (!found) { setLoginErr('Credenziali non valide'); return; }
+    localStorage.setItem('log_session', JSON.stringify(found));
     setUser(found);
   };
 
-  const handleLogout = () => { setUser(null); setLoginUser(''); setLoginPass(''); };
+  const handleLogout = () => { localStorage.removeItem('log_session'); setUser(null); setLoginUser(''); setLoginPass(''); };
 
   const handleSaveLogs = async (newLogs) => {
     setLogs(newLogs);
