@@ -40,6 +40,45 @@ const VIEW_TABS = [
 
 const EMPTY_COMMESSA = '(Senza commessa)';
 
+// ── Backup helpers ────────────────────────────────────────────────────────────
+const BACKUP_HISTORY_KEY = 'log_backup_history';
+const BACKUP_LAST_TS_KEY  = 'log_last_backup_ts';
+const MAX_BACKUPS = 10;
+
+function isBackupDue() {
+  const now = new Date();
+  const checkpoint = new Date(now);
+  checkpoint.setHours(8, 0, 0, 0);
+  if (now < checkpoint) checkpoint.setDate(checkpoint.getDate() - 1);
+  const lastTs = parseInt(localStorage.getItem(BACKUP_LAST_TS_KEY) || '0');
+  return lastTs < checkpoint.getTime();
+}
+
+function saveBackupToHistory(logs) {
+  try {
+    const history = JSON.parse(localStorage.getItem(BACKUP_HISTORY_KEY) || '[]');
+    history.unshift({ ts: Date.now(), logs });
+    localStorage.setItem(BACKUP_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_BACKUPS)));
+    localStorage.setItem(BACKUP_LAST_TS_KEY, Date.now().toString());
+  } catch (e) { console.error('Backup fallito:', e); }
+}
+
+function downloadBackupFile(logs, ts = Date.now()) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.toISOString().slice(0, 10)}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const blob = new Blob(
+    [JSON.stringify({ logs, exportedAt: d.toISOString() }, null, 2)],
+    { type: 'application/json' }
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `log_produzione_backup_${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -444,6 +483,7 @@ export default function App() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedLog, setSelectedLog]   = useState(null);
   const [ddpCommesse, setDdpCommesse]   = useState([]);
+  const [backupBanner, setBackupBanner] = useState(false);
   const [loginUser, setLoginUser]       = useState('');
   const [loginPass, setLoginPass]       = useState('');
   const [loginErr, setLoginErr]         = useState('');
@@ -463,6 +503,16 @@ export default function App() {
       setLoading(false);
     })();
   }, []);
+
+  // Backup automatico — solo utenti con canBackup abilitato
+  useEffect(() => {
+    if (loading || !user) return;
+    const fullUser = users.find(u => u.username === user.username);
+    if (!fullUser?.canBackup) return;
+    if (!isBackupDue()) return;
+    saveBackupToHistory(logs);
+    setBackupBanner(true);
+  }, [loading]);
 
   const toggleSmartMode = () => {
     const next = !smartMode;
@@ -796,6 +846,15 @@ export default function App() {
           <button onClick={handleLogout} className="text-xs font-semibold px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 hover:bg-gray-200 transition-colors">Esci</button>
         </div>
       </header>
+
+      {/* Backup banner */}
+      {backupBanner && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-3 flex-wrap">
+          <span className="text-blue-700 text-sm flex-1">💾 <b>Backup delle 08:00</b> salvato localmente — vuoi scaricare anche il file?</span>
+          <button onClick={() => { downloadBackupFile(logs); setBackupBanner(false); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Scarica</button>
+          <button onClick={() => setBackupBanner(false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Ignora</button>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="bg-white border-b sticky top-[57px] z-20">
