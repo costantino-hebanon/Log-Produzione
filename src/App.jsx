@@ -35,6 +35,7 @@ const VIEW_TABS = [
   { key: 'commessa',    label: 'Commessa',    icon: '🏗️' },
   { key: 'tipo',        label: 'Tipo',        icon: '🏷️' },
   { key: 'autore',      label: 'Autore',      icon: '👤' },
+  { key: 'miei',        label: 'I miei LOG',  icon: '🙋' },
 ];
 
 const EMPTY_COMMESSA = '(Senza commessa)';
@@ -513,6 +514,7 @@ export default function App() {
 
   // ── Filtered logs ──
   const filtered = logs.filter(e => {
+    if (viewMode === 'miei' && e.operatore !== user.username) return false;
     if (filterTipo && e.tipo !== filterTipo) return false;
     if (filterSearch) {
       const q = filterSearch.toLowerCase();
@@ -717,7 +719,7 @@ export default function App() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
           <span className="text-6xl">📋</span>
-          <p className="text-lg font-medium">Nessun log presente</p>
+          <p className="text-lg font-medium">{viewMode === 'miei' ? 'Non hai ancora inserito log' : 'Nessun log presente'}</p>
           <p className="text-sm">Usa il pulsante + per aggiungere il primo</p>
         </div>
       ) : (
@@ -849,7 +851,7 @@ export default function App() {
         )}
 
         {/* Content */}
-        {viewMode === 'cronologico'
+        {(viewMode === 'cronologico' || viewMode === 'miei')
           ? renderCronologico()
           : selectedGroup
             ? renderDrillDown()
