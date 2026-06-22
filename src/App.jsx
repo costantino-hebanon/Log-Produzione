@@ -471,7 +471,7 @@ export default function App() {
   const [logs, setLogs]                 = useState([]);
   const [loading, setLoading]           = useState(true);
   const [smartMode, setSmartMode]       = useState(() => localStorage.getItem('log_produzione_smart_mode') === 'true');
-  const [showSmartView, setShowSmartView] = useState(false);
+  const [showSmartView, setShowSmartView] = useState(() => localStorage.getItem('log_produzione_smart_mode') === 'true');
   const [showWizard, setShowWizard]     = useState(false);
   const [showForm, setShowForm]         = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -516,6 +516,7 @@ export default function App() {
   const toggleSmartMode = () => {
     const next = !smartMode;
     setSmartMode(next);
+    setShowSmartView(next);
     localStorage.setItem('log_produzione_smart_mode', String(next));
   };
 
@@ -877,17 +878,6 @@ export default function App() {
 
       <div className="max-w-3xl mx-auto px-4 py-4">
 
-        {/* Smart Mode banner */}
-        {smartMode && !selectedGroup && (
-          <button onClick={() => setShowSmartView(true)} className="w-full mb-4 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center gap-3 hover:bg-amber-100 transition-colors text-left">
-            <span className="text-2xl">⚡</span>
-            <div>
-              <p className="font-bold text-amber-800">Smart Mode attiva</p>
-              <p className="text-sm text-amber-600">Tocca per la vista ottimizzata mobile</p>
-            </div>
-            <span className="ml-auto text-amber-400 text-xl">→</span>
-          </button>
-        )}
 
         {/* Filters */}
         {!selectedGroup && (
