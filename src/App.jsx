@@ -211,7 +211,6 @@ function CommessaField({ value, onChange, commesse }) {
       {showCustom && (
         <div className="flex gap-2 items-center p-2 bg-blue-50 rounded-xl border border-blue-200">
           <input
-            autoFocus
             type="text"
             value={customVal}
             onChange={e => setCustomVal(e.target.value)}

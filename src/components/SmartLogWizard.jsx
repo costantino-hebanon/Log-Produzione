@@ -125,7 +125,7 @@ export default function SmartLogWizard({ onSave, onClose, currentUsername, isUff
                 </p>
                 {s.type === 'textarea' ? (
                   <textarea
-                    autoFocus key={phase} rows={5}
+                    key={phase} rows={5}
                     className="w-full border-2 border-gray-300 rounded-2xl px-4 py-4 text-base focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 resize-none"
                     value={data[s.key]} placeholder={s.placeholder}
                     onChange={e => set(s.key, e.target.value)}
@@ -133,7 +133,7 @@ export default function SmartLogWizard({ onSave, onClose, currentUsername, isUff
                 ) : (
                   <>
                     <input
-                      autoFocus key={phase} type="text"
+                      key={phase} type="text"
                       className="w-full max-w-xs text-2xl text-center border-2 border-gray-300 rounded-2xl px-4 py-5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                       value={data[s.key]} placeholder={s.placeholder}
                       onChange={e => set(s.key, e.target.value)}
