@@ -4,12 +4,12 @@ import { supabase } from './supabaseConfig';
 
 export async function loadDDPCommesse() {
   try {
+    // Fase 2: i nomi commessa arrivano dalla tabella relazionale `commesse` (stato attiva).
     const { data } = await supabase
-      .from('app_data')
-      .select('value')
-      .eq('key', 'ddp_commesse')
-      .single();
-    return (data?.value || [])
+      .from('commesse')
+      .select('nome')
+      .eq('stato', 'attiva');
+    return (data || [])
       .map(c => c.nome)
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b, 'it'));
