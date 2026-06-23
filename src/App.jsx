@@ -437,11 +437,11 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                 {!isEditing ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     {row.enabled
-                      ? <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Abilitato</span>
-                      : <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-2 py-0.5">Non abilitato</span>}
-                    <span className="text-xs text-gray-500">{LEVEL_LABEL[row.level] || row.level}</span>
-                    {row.canBackup  && <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Backup</span>}
-                    {row.canNotify && <span className="text-xs bg-purple-100 text-purple-700 rounded-full px-2 py-0.5">Notifiche</span>}
+                      ? <span className="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">Abilitato</span>
+                      : <span className="text-xs bg-gray-100 text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">Non abilitato</span>}
+                    <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-1">{LEVEL_LABEL[row.level] || row.level}</span>
+                    {row.canBackup  && <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5">Backup</span>}
+                    {row.canNotify && <span className="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded-full px-2 py-0.5">Notifiche</span>}
                     <div className="ml-auto flex gap-1">
                       <Btn small color="blue" onClick={() => startEdit(i)}>Modifica</Btn>
                       {!isMe && <Btn small color="red" onClick={() => handleDelete(i)}>Elimina</Btn>}

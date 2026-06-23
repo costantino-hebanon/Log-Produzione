@@ -1,5 +1,8 @@
 # LOG Produzione — CLAUDE.md
 
+## Reference dati & analisi
+[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](https://claude.ai/code/artifact/74178f73-e552-4e31-9f15-86ca14d1e772) — documento completo con architettura Supabase (3 progetti), schemi di tutte le app, ~70 analisi di business, avvertenze critiche (no prezzi, no commessa unificata, date miste) e blocco da incollare in chat.
+
 ## Scopo
 App per tracciare il log delle attività di produzione: cambi di progetto, variazioni in corso d'opera, annotazioni, osservazioni, decisioni prese durante conversazioni, ecc.
 
