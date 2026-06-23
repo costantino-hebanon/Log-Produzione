@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://iuamlbybtxccucgnathk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1YW1sYnlidHhjY3VjZ25hdGhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTg3NzAsImV4cCI6MjA5NzQzNDc3MH0.DUEWxqQvKcZsm0-MD67tm7Felkfbl1ymzcJ1DJJ7AWY';
+// Progetto Supabase UNIFICATO (migrazione 2026-06-23).
+// Prima della migrazione LOG usava il progetto iuamlbybtxccucgnathk (ora dismesso).
+const SUPABASE_URL = 'https://ckbolwvwnsabsblzcbet.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYm9sd3Z3bnNhYnNibHpjYmV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTc5NDAsImV4cCI6MjA5NzI3Mzk0MH0.hR9tg_UjO5Dt0RzdJihXJWPaKJisVXk9ZZrDSAZ9KLQ';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

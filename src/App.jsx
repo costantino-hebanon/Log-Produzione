@@ -10,13 +10,56 @@ async function sha256(msg) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Supabase ──────────────────────────────────────────────────────────────────
+// ── Supabase (progetto unificato, migrazione 2026-06-23) ────────────────────────
+// Chiavi namespacizzate: i log di questa app vivono in `log_logs`. Gli utenti sono
+// nella lista condivisa `utenti` con struttura { username, password_hash, apps:{log:{level}}, ... }.
+const APP = 'log';
+const KEY_REMAP = { logs: 'log_logs' };
 async function dbGet(key) {
-  const { data } = await supabase.from('app_data').select('value').eq('key', key).single();
+  const real = KEY_REMAP[key] || key;
+  const { data } = await supabase.from('app_data').select('value').eq('key', real).single();
   return data?.value ?? null;
 }
 async function dbSet(key, value) {
-  await supabase.from('app_data').upsert({ key, value }, { onConflict: 'key' });
+  const real = KEY_REMAP[key] || key;
+  await supabase.from('app_data').upsert({ key: real, value }, { onConflict: 'key' });
+}
+
+// Vista utenti LOG proiettata dalla lista unificata (campo `password` = hash, come si aspetta la UI).
+async function loadUsers() {
+  const all = (await dbGet('utenti')) || [];
+  return all.filter(u => u.apps && u.apps[APP]).map(u => ({
+    id: u.id,
+    username: u.username,
+    password: u.password_hash,
+    level: u.apps[APP].level,
+    canBackup: !!u.canBackup,
+    canNotify: !!u.canNotify,
+  }));
+}
+// Ri-fonde gli utenti LOG nella lista unificata, toccando solo la slice apps.log.
+async function saveUsers(logUsers) {
+  const all = (await dbGet('utenti')) || [];
+  const byName = new Map(all.map(u => [u.username.toLowerCase(), u]));
+  const seen = new Set();
+  for (const lu of logUsers) {
+    const k = lu.username.toLowerCase();
+    seen.add(k);
+    let u = byName.get(k);
+    if (!u) {
+      u = { id: String(Date.now()) + Math.floor(Math.random() * 1e4), username: lu.username, apps: {} };
+      all.push(u); byName.set(k, u);
+    }
+    if (lu.password) u.password_hash = lu.password;
+    u.canBackup = !!lu.canBackup;
+    u.canNotify = !!lu.canNotify;
+    u.apps = u.apps || {};
+    u.apps[APP] = { level: lu.level };
+  }
+  for (const u of all) {
+    if (u.apps?.[APP] && !seen.has(u.username.toLowerCase())) delete u.apps[APP];
+  }
+  await dbSet('utenti', all.filter(u => u.apps && Object.keys(u.apps).length > 0));
 }
 
 // ── Costanti ──────────────────────────────────────────────────────────────────
@@ -495,7 +538,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [u, l, c] = await Promise.all([dbGet('users'), dbGet('logs'), loadDDPCommesse()]);
+      const [u, l, c] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse()]);
       setUsers((u || []).map(usr => ({ canBackup: false, canNotify: false, ...usr })));
       setLogs(l || []);
       setDdpCommesse(c);
@@ -555,7 +598,7 @@ export default function App() {
 
   const handleSaveUsers = async (newUsers) => {
     setUsers(newUsers);
-    await dbSet('users', newUsers);
+    await saveUsers(newUsers); // ri-fonde nella lista unificata `utenti`
   };
 
   const changeView = (key) => { setViewMode(key); setSelectedGroup(null); };
