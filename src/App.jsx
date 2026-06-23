@@ -25,41 +25,42 @@ async function dbSet(key, value) {
   await supabase.from('app_data').upsert({ key: real, value }, { onConflict: 'key' });
 }
 
-// Vista utenti LOG proiettata dalla lista unificata (campo `password` = hash, come si aspetta la UI).
+// Anagrafica condivisa con abilitazione per-app: LOG vede TUTTI gli utenti; l'accesso
+// è dato da apps.log.enabled. Campo `password` = hash (come si aspetta la UI LOG).
+// Compatibilità: slice presente senza `enabled` = abilitata (stato pre-modifica).
+const DEFAULT_LEVEL = 'produzione';
+const sliceEnabled = (slice) => slice ? slice.enabled !== false : false;
 async function loadUsers() {
   const all = (await dbGet('utenti')) || [];
-  return all.filter(u => u.apps && u.apps[APP]).map(u => ({
-    id: u.id,
-    username: u.username,
-    password: u.password_hash,
-    level: u.apps[APP].level,
-    canBackup: !!u.canBackup,
-    canNotify: !!u.canNotify,
-  }));
+  return all.map(u => {
+    const s = u.apps?.[APP] || {};
+    return {
+      id: u.id,
+      username: u.username,
+      password: u.password_hash,
+      enabled: sliceEnabled(u.apps?.[APP]),
+      level: s.level ?? DEFAULT_LEVEL,
+      canBackup: !!s.canBackup,
+      canNotify: !!s.canNotify,
+    };
+  });
 }
-// Ri-fonde gli utenti LOG nella lista unificata, toccando solo la slice apps.log.
+// Ri-costruisce l'anagrafica condivisa: aggiorna solo la slice apps.log; le persone
+// non più presenti vengono eliminate da tutte le app.
 async function saveUsers(logUsers) {
   const all = (await dbGet('utenti')) || [];
-  const byName = new Map(all.map(u => [u.username.toLowerCase(), u]));
-  const seen = new Set();
+  const result = [];
   for (const lu of logUsers) {
-    const k = lu.username.toLowerCase();
-    seen.add(k);
-    let u = byName.get(k);
-    if (!u) {
-      u = { id: String(Date.now()) + Math.floor(Math.random() * 1e4), username: lu.username, apps: {} };
-      all.push(u); byName.set(k, u);
-    }
+    let u = all.find(x => (lu.id && x.id === lu.id) || x.username.toLowerCase() === lu.username.toLowerCase());
+    u = u
+      ? { ...u, apps: { ...(u.apps || {}) } }
+      : { id: lu.id || (String(Date.now()) + Math.floor(Math.random() * 1e4)), username: lu.username, password_hash: '', apps: {} };
     if (lu.password) u.password_hash = lu.password;
-    u.canBackup = !!lu.canBackup;
-    u.canNotify = !!lu.canNotify;
-    u.apps = u.apps || {};
-    u.apps[APP] = { level: lu.level };
+    u.username = lu.username;
+    u.apps[APP] = { enabled: !!lu.enabled, level: lu.level, canBackup: !!lu.canBackup, canNotify: !!lu.canNotify };
+    result.push(u);
   }
-  for (const u of all) {
-    if (u.apps?.[APP] && !seen.has(u.username.toLowerCase())) delete u.apps[APP];
-  }
-  await dbSet('utenti', all.filter(u => u.apps && Object.keys(u.apps).length > 0));
+  await dbSet('utenti', result);
 }
 
 // ── Costanti ──────────────────────────────────────────────────────────────────
@@ -402,7 +403,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
 
   const handleDelete = (i) => {
     if (rows[i].username === currentUsername) { alert('Non puoi eliminare te stesso.'); return; }
-    if (!confirm(`Eliminare ${rows[i].username}?`)) return;
+    if (!confirm(`Eliminare ${rows[i].username}? Verrà rimosso da TUTTE le app (anagrafica condivisa).`)) return;
     const updated = rows.filter((_, idx) => idx !== i);
     setRows(updated); onSave(updated);
   };
@@ -410,7 +411,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
   const handleAdd = async () => {
     if (!newUser.username.trim() || !newUser.password.trim()) return;
     const hashed  = await sha256(newUser.password);
-    const updated = [...rows, { username: newUser.username.trim(), password: hashed, level: newUser.level, canBackup: false, canNotify: false }];
+    const updated = [...rows, { username: newUser.username.trim(), password: hashed, enabled: true, level: newUser.level, canBackup: false, canNotify: false }];
     setRows(updated); onSave(updated);
     setNewUser({ username: '', password: '', level: 'produzione' }); setAdding(false);
   };
@@ -436,6 +437,9 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                 </div>
                 {!isEditing ? (
                   <div className="flex items-center gap-2 flex-wrap">
+                    {row.enabled
+                      ? <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Abilitato</span>
+                      : <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-2 py-0.5">Non abilitato</span>}
                     <span className="text-xs text-gray-500">{LEVEL_LABEL[row.level] || row.level}</span>
                     {row.canBackup  && <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Backup</span>}
                     {row.canNotify && <span className="text-xs bg-purple-100 text-purple-700 rounded-full px-2 py-0.5">Notifiche</span>}
@@ -462,6 +466,9 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                         {showPwd ? '🙈' : '👁️'}
                       </button>
                     </div>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input type="checkbox" checked={!!row.enabled} onChange={e => set(i, 'enabled', e.target.checked)} className="rounded accent-green-600" /> Abilitato (accesso a questa app)
+                    </label>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                         <input type="checkbox" checked={!!row.canBackup} onChange={e => set(i, 'canBackup', e.target.checked)} className="rounded" /> Backup auto
@@ -575,6 +582,7 @@ export default function App() {
     const hash  = await sha256(loginPass);
     const found = users.find(u => u.username === loginUser && u.password === hash);
     if (!found) { setLoginErr('Credenziali non valide'); return; }
+    if (!found.enabled) { setLoginErr('Account non abilitato per questa app'); return; }
     localStorage.setItem('log_session', JSON.stringify(found));
     setUser(found);
   };
