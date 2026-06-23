@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseConfig';
 import { loadDDPCommesse } from './supabaseDDP';
-import SmartLogView from './components/SmartLogView';
 import SmartLogWizard from './components/SmartLogWizard';
 
 // ── SHA-256 ───────────────────────────────────────────────────────────────────
@@ -521,7 +520,6 @@ export default function App() {
   const [logs, setLogs]                 = useState([]);
   const [loading, setLoading]           = useState(true);
   const [smartMode, setSmartMode]       = useState(() => localStorage.getItem('log_produzione_smart_mode') === 'true');
-  const [showSmartView, setShowSmartView] = useState(() => localStorage.getItem('log_produzione_smart_mode') === 'true');
   const [showWizard, setShowWizard]     = useState(false);
   const [showForm, setShowForm]         = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -566,7 +564,6 @@ export default function App() {
   const toggleSmartMode = () => {
     const next = !smartMode;
     setSmartMode(next);
-    setShowSmartView(next);
     localStorage.setItem('log_produzione_smart_mode', String(next));
   };
 
@@ -662,20 +659,6 @@ export default function App() {
           )}
         </div>
       </div>
-    );
-  }
-
-  // ── SMART VIEW ─────────────────────────────────────────────────────────────
-  if (smartMode && showSmartView) {
-    return (
-      <SmartLogView
-        logs={logs}
-        onSave={handleSaveLogs}
-        onClose={() => setShowSmartView(false)}
-        currentUser={user}
-        isUfficio={isUfficio}
-        ddpCommesse={ddpCommesse}
-      />
     );
   }
 
