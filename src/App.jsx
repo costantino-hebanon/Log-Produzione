@@ -582,9 +582,18 @@ export default function App() {
     if (!found.enabled) { setLoginErr('Account non abilitato per questa app'); return; }
     localStorage.setItem('log_session', JSON.stringify(found));
     setUser(found);
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(os => os.User.addTag('username', found.username));
   };
 
-  const handleLogout = () => { localStorage.removeItem('log_session'); setUser(null); setLoginUser(''); setLoginPass(''); };
+  const handleLogout = () => {
+    localStorage.removeItem('log_session');
+    setUser(null);
+    setLoginUser('');
+    setLoginPass('');
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(os => os.User.removeTag('username'));
+  };
 
   const handleSaveLogs = async (newLogs) => {
     setLogs(newLogs);
