@@ -1,7 +1,8 @@
 # LOG Produzione — CLAUDE.md
 
 ## Reference dati & analisi
-[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-24.
+[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../../Hebanon-Reference/HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-24.
+Cartella locale: `F:\Claude sessioni\Hebanon-Reference\` · GitHub: [costantino-hebanon/Hebanon-M.E.S.](https://github.com/costantino-hebanon/Hebanon-M.E.S.)
 
 ## Scopo
 App per tracciare il log delle attività di produzione: cambi di progetto, variazioni in corso d'opera, annotazioni, osservazioni, decisioni prese durante conversazioni, ecc.
