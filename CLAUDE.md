@@ -1,7 +1,7 @@
 # LOG Produzione — CLAUDE.md
 
 ## Reference dati & analisi
-[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](https://claude.ai/code/artifact/74178f73-e552-4e31-9f15-86ca14d1e772) — documento completo con architettura Supabase (3 progetti), schemi di tutte le app, ~70 analisi di business, avvertenze critiche (no prezzi, no commessa unificata, date miste) e blocco da incollare in chat.
+[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-24.
 
 ## Scopo
 App per tracciare il log delle attività di produzione: cambi di progetto, variazioni in corso d'opera, annotazioni, osservazioni, decisioni prese durante conversazioni, ecc.
@@ -9,16 +9,17 @@ App per tracciare il log delle attività di produzione: cambi di progetto, varia
 ## Stack
 - **React 18 + Vite 5** — tutto in `src/App.jsx` + componenti in `src/components/`
 - **Tailwind CSS** via CDN in `index.html` (nessun `tailwind.config.js`)
-- **Supabase** — key-value store su tabella `app_data` (chiave `key`, valore JSONB `value`)
+- **Supabase** — tabella `app_data`, progetto unificato `ckbolwvwnsabsblzcbet`. Credenziali in `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (`.env` gitignored)
 - **Vercel** — deploy + serverless function in `api/notify.js`
-- **OneSignal** — notifiche push (App ID da configurare in `api/notify.js`)
+- **OneSignal** — notifiche push (App ID: `08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb`)
 
 ## Struttura file
 ```
 src/
   App.jsx                       # Tutto il codice principale
   main.jsx                      # Entry point + registrazione SW
-  supabaseConfig.js             # Credenziali Supabase (da configurare)
+  supabaseConfig.js             # Legge VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY da env
+  supabaseDDP.js                # loadDDPCommesse() — stesso DB unificato
   components/
     SmartLogView.jsx            # Vista fullscreen in Smart Mode
     SmartLogWizard.jsx          # Wizard inserimento log (Smart Mode)
@@ -27,14 +28,15 @@ api/
 public/
   manifest.json                 # PWA manifest
   sw.js                         # Service worker base
-  icon-192.png                  # Icona PWA (da aggiungere)
-  icon-512.png                  # Icona PWA (da aggiungere)
+  OneSignalSDKWorker.js         # Service worker OneSignal (OBBLIGATORIO per push)
+  icon-192.png
+  icon-512.png
 ```
 
 ## Dati su Supabase
-Tabella `app_data`, stessa struttura delle altre app:
-- `users` — array `{ username, password (SHA-256), level, canBackup, canNotify }`
-- `logs` — array di voci log, ordinate più recente prima:
+Tabella `app_data`, progetto unificato `ckbolwvwnsabsblzcbet`:
+- `utenti` — anagrafica condivisa cross-app: `[{ id, username, password_hash, apps:{ log:{enabled,level,canBackup,canNotify}, … } }]`
+- `log_logs` — array di voci log (chiave logica `logs` rimappata via `KEY_REMAP` in App.jsx → `log_logs`):
   ```json
   {
     "id": "uuid",
@@ -49,6 +51,8 @@ Tabella `app_data`, stessa struttura delle altre app:
   }
   ```
 
+> `log_logs` è attualmente vuoto (`[]`): nessuna voce reale inserita post-migrazione.
+
 ## Tipi di log
 | Valore | Label | Icona |
 |---|---|---|
@@ -59,9 +63,11 @@ Tabella `app_data`, stessa struttura delle altre app:
 | `decisione` | Decisione | ✅ |
 
 ## Utenti e ruoli
+Anagrafica condivisa `utenti` — slice `apps.log.{enabled, level, canBackup, canNotify}`.
 - `level: 'ufficio'` — accesso completo, vede ⚙️ impostazioni, può eliminare qualsiasi log
 - `level: 'produzione'` — può aggiungere log e eliminare solo i propri
 - `canBackup`, `canNotify` — stessa logica delle altre app
+- Slice assente = utente abilitato (backward compat)
 
 ## Smart Mode
 - Toggle persistito in `localStorage` con chiave `log_produzione_smart_mode`
@@ -70,32 +76,25 @@ Tabella `app_data`, stessa struttura delle altre app:
 - `SmartLogWizard`: step 0 = selezione tipo con card grandi (auto-avanza), poi commessa → titolo → descrizione
 - `SmartLogView`: lista raggruppata per data con filtri, "Aggiungi log" in fondo
 
+## Notifiche push OneSignal
+- App ID: `08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb` (in `index.html`)
+- `public/OneSignalSDKWorker.js` — obbligatorio per la registrazione del service worker push
+- Tag `username` impostato su login (`os.User.addTag`), rimosso su logout
+- `api/notify.js` — serverless, usa `ONESIGNAL_APP_ID` e `ONESIGNAL_REST_API_KEY` da env vars
+- Il frontend LOG **non chiama ancora** `sendNotify` — i trigger di notifica non sono implementati
+
 ## PWA / Install
 - `beforeinstallprompt` catturato → pulsante "📲 Installa app" verde nell'header
 - Service worker in `public/sw.js` (base, solo cache-then-network)
-- **Aggiungere icone**: metti `icon-192.png` e `icon-512.png` in `public/` per completare la PWA
 
-## Setup iniziale
-1. Crea progetto Supabase → copia URL e anon key in `src/supabaseConfig.js`
-2. Esegui questo SQL su Supabase per creare la tabella:
-   ```sql
-   create table app_data (
-     key text primary key,
-     value jsonb
-   );
-   ```
-3. Inserisci il primo utente admin:
-   ```sql
-   insert into app_data (key, value) values (
-     'users',
-     '[{"username":"admin","password":"<sha256 della password>","level":"ufficio","canBackup":false,"canNotify":false}]'
-   );
-   ```
-4. Inserisci `logs` vuoto:
-   ```sql
-   insert into app_data (key, value) values ('logs', '[]');
-   ```
-5. Configura OneSignal: inserisci App ID in `api/notify.js` e `ONESIGNAL_API_KEY` nelle env vars Vercel
+## Variabili d'ambiente Vercel
+Settings → Environment Variables:
+```
+VITE_SUPABASE_URL=https://ckbolwvwnsabsblzcbet.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key>
+ONESIGNAL_APP_ID=08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb
+ONESIGNAL_REST_API_KEY=<os_v2_app_...>
+```
 
 ## Comandi
 ```bash
@@ -111,4 +110,5 @@ git add . && git commit -m "..." && git push   # deploy Vercel
 - `Btn` component definito inline in `App.jsx`
 - I log sono salvati in ordine inverso (più recente in cima all'array)
 - La visualizzazione normale raggruppa per data (`formatDate` riconosce "Oggi" e "Ieri")
-- `SettingsModal` usa lo stesso pattern view/edit mode della Ferramenta App (`editingIndex`, `showPwd`)
+- `KEY_REMAP` in App.jsx mappa la chiave logica `logs` → `log_logs` (la chiave bare `logs` nel DB era usata da una versione precedente, ora rimossa)
+- `sliceEnabled(slice)`: `!slice || slice.enabled !== false` — slice assente = abilitato (backward compat)
