@@ -64,10 +64,11 @@ Tabella `app_data`, progetto unificato `ckbolwvwnsabsblzcbet`:
 
 ## Utenti e ruoli
 Anagrafica condivisa `utenti` — slice `apps.log.{enabled, level, canBackup, canNotify}`.
-- `level: 'ufficio'` — accesso completo, vede ⚙️ impostazioni, può eliminare qualsiasi log
+- `level: 'ufficio'` — accesso completo, può eliminare qualsiasi log
 - `level: 'produzione'` — può aggiungere log e eliminare solo i propri
 - `canBackup`, `canNotify` — stessa logica delle altre app
 - Slice assente = utente abilitato (backward compat)
+- **⚙️ pulsante visibile a tutti**: ufficio vede tutti gli utenti con modifica completa; produzione vede solo il proprio profilo e può cambiare solo la propria password (`isAdmin={isUfficio}` passato a `SettingsModal`)
 
 ## Smart Mode
 - Toggle persistito in `localStorage` con chiave `log_produzione_smart_mode`
