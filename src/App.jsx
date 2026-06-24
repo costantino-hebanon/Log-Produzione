@@ -28,7 +28,7 @@ async function dbSet(key, value) {
 // è dato da apps.log.enabled. Campo `password` = hash (come si aspetta la UI LOG).
 // Compatibilità: slice presente senza `enabled` = abilitata (stato pre-modifica).
 const DEFAULT_LEVEL = 'produzione';
-const sliceEnabled = (slice) => slice ? slice.enabled !== false : false;
+const sliceEnabled = (slice) => !slice || slice.enabled !== false;
 async function loadUsers() {
   const all = (await dbGet('utenti')) || [];
   return all.map(u => {
