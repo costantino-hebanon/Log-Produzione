@@ -376,7 +376,7 @@ function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [] }) {
 }
 
 // ── SettingsModal ─────────────────────────────────────────────────────────────
-function SettingsModal({ users, onSave, onClose, currentUsername }) {
+function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true }) {
   const [rows, setRows]             = useState(users.map(u => ({ ...u })));
   const [editingIndex, setEditingIndex] = useState(null);
   const [showPwd, setShowPwd]       = useState(false);
@@ -428,6 +428,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
           {rows.map((row, i) => {
             const isMe     = row.username === currentUsername;
             const isEditing = editingIndex === i;
+            if (!isAdmin && !isMe) return null;
             return (
               <div key={i} className={`rounded-2xl border-2 p-4 ${isMe ? 'border-blue-200 bg-blue-50/40' : 'border-gray-100 bg-gray-50/40'}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -436,26 +437,27 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                 </div>
                 {!isEditing ? (
                   <div className="flex items-center gap-2 flex-wrap">
-                    {row.enabled
+                    {isAdmin && (row.enabled
                       ? <span className="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">Abilitato</span>
-                      : <span className="text-xs bg-gray-100 text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">Non abilitato</span>}
-                    <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-1">{LEVEL_LABEL[row.level] || row.level}</span>
-                    {row.canBackup  && <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5">Backup</span>}
-                    {row.canNotify && <span className="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded-full px-2 py-0.5">Notifiche</span>}
+                      : <span className="text-xs bg-gray-100 text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">Non abilitato</span>)}
+                    {isAdmin && <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-1">{LEVEL_LABEL[row.level] || row.level}</span>}
+                    {isAdmin && row.canBackup  && <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5">Backup</span>}
+                    {isAdmin && row.canNotify && <span className="text-xs bg-purple-50 text-purple-600 border border-purple-200 rounded-full px-2 py-0.5">Notifiche</span>}
+                    {!isAdmin && <span className="text-xs text-gray-400">Modifica la tua password</span>}
                     <div className="ml-auto flex gap-1">
                       <Btn small color="blue" onClick={() => startEdit(i)}>Modifica</Btn>
-                      {!isMe && <Btn small color="red" onClick={() => handleDelete(i)}>Elimina</Btn>}
+                      {isAdmin && !isMe && <Btn small color="red" onClick={() => handleDelete(i)}>Elimina</Btn>}
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <input type="text" value={row.username} onChange={e => set(i, 'username', e.target.value)}
-                      placeholder="Username" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
-                    <select value={row.level} onChange={e => set(i, 'level', e.target.value)}
+                    {isAdmin && <input type="text" value={row.username} onChange={e => set(i, 'username', e.target.value)}
+                      placeholder="Username" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />}
+                    {isAdmin && <select value={row.level} onChange={e => set(i, 'level', e.target.value)}
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
                       <option value="ufficio">Ufficio tecnico</option>
                       <option value="produzione">Produzione</option>
-                    </select>
+                    </select>}
                     <div className="relative">
                       <input type={showPwd ? 'text' : 'password'} value={row._newPassword || ''}
                         onChange={e => set(i, '_newPassword', e.target.value)}
@@ -465,17 +467,17 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                         {showPwd ? '🙈' : '👁️'}
                       </button>
                     </div>
-                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    {isAdmin && <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                       <input type="checkbox" checked={!!row.enabled} onChange={e => set(i, 'enabled', e.target.checked)} className="rounded accent-green-600" /> Abilitato (accesso a questa app)
-                    </label>
-                    <div className="flex gap-4">
+                    </label>}
+                    {isAdmin && <div className="flex gap-4">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                         <input type="checkbox" checked={!!row.canBackup} onChange={e => set(i, 'canBackup', e.target.checked)} className="rounded" /> Backup auto
                       </label>
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                         <input type="checkbox" checked={!!row.canNotify} onChange={e => set(i, 'canNotify', e.target.checked)} className="rounded" /> Notifiche
                       </label>
-                    </div>
+                    </div>}
                     <div className="flex gap-2 pt-1">
                       <Btn small color="blue" onClick={() => handleSaveRow(i)}>💾 Salva</Btn>
                       <Btn small onClick={() => cancelEdit(i)}>Annulla</Btn>
@@ -485,7 +487,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
               </div>
             );
           })}
-          {!adding ? (
+          {isAdmin && (!adding ? (
             <button onClick={() => setAdding(true)} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:border-blue-400 hover:text-blue-500 text-sm font-medium transition-colors">
               + Aggiungi utente
             </button>
@@ -506,7 +508,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername }) {
                 <Btn small onClick={() => { setAdding(false); setNewUser({ username: '', password: '', level: 'produzione' }); }}>Annulla</Btn>
               </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
@@ -883,9 +885,7 @@ export default function App() {
               smartMode ? 'bg-amber-400 border-amber-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
             }`}
           >⚡ Smart {smartMode ? 'ON' : 'OFF'}</button>
-          {isUfficio && (
-            <button onClick={() => setShowSettings(true)} className="text-xs font-semibold px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 hover:bg-gray-200 transition-colors">⚙️</button>
-          )}
+          <button onClick={() => setShowSettings(true)} className="text-xs font-semibold px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 hover:bg-gray-200 transition-colors">⚙️</button>
           <button onClick={handleLogout} className="text-xs font-semibold px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 hover:bg-gray-200 transition-colors">Esci</button>
         </div>
       </header>
@@ -961,7 +961,7 @@ export default function App() {
       {/* Modali */}
       {showForm     && <LogEntryForm onSave={handleAddLog} onClose={() => setShowForm(false)} currentUser={user} ddpCommesse={ddpCommesse} />}
       {showWizard   && <SmartLogWizard currentUsername={user.username} isUfficio={isUfficio} ddpCommesse={ddpCommesse} onSave={handleAddLog} onClose={() => setShowWizard(false)} />}
-      {showSettings && <SettingsModal users={users} onSave={handleSaveUsers} onClose={() => setShowSettings(false)} currentUsername={user.username} />}
+      {showSettings && <SettingsModal users={users} onSave={handleSaveUsers} onClose={() => setShowSettings(false)} currentUsername={user.username} isAdmin={isUfficio} />}
       {selectedLog  && <LogDetailModal entry={selectedLog} onClose={() => setSelectedLog(null)} />}
     </div>
   );
