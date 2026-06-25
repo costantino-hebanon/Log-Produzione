@@ -299,25 +299,34 @@ function LogDetailModal({ entry, onClose }) {
 }
 
 // ── LogEntryForm ──────────────────────────────────────────────────────────────
-function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [] }) {
+function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [], editEntry = null }) {
   const isUfficio = currentUser?.level === 'ufficio';
-  const [tipo, setTipo]             = useState('annotazione');
-  const [operatore, setOperatore]   = useState(currentUser?.username || '');
-  const [commessa, setCommessa]     = useState('');
-  const [titolo, setTitolo]         = useState('');
-  const [descrizione, setDescrizione] = useState('');
+  const [tipo, setTipo]               = useState(editEntry?.tipo || 'annotazione');
+  const [operatore, setOperatore]     = useState(editEntry?.operatore || currentUser?.username || '');
+  const [commessa, setCommessa]       = useState(editEntry?.commessa || '');
+  const [titolo, setTitolo]           = useState(editEntry?.titolo || '');
+  const [descrizione, setDescrizione] = useState(editEntry?.descrizione || '');
 
   const handleSubmit = () => {
     if (!titolo.trim()) return;
-    const now = new Date();
-    onSave({
-      id: crypto.randomUUID(),
-      data: now.toISOString().slice(0, 10),
-      ora: now.toTimeString().slice(0, 5),
-      operatore: isUfficio ? (operatore.trim() || currentUser?.username) : currentUser?.username,
-      tipo, commessa: commessa.trim(), titolo: titolo.trim(), descrizione: descrizione.trim(),
-      created_at: now.toISOString(),
-    });
+    if (editEntry) {
+      onSave({
+        ...editEntry,
+        tipo,
+        operatore: isUfficio ? (operatore.trim() || currentUser?.username) : currentUser?.username,
+        commessa: commessa.trim(), titolo: titolo.trim(), descrizione: descrizione.trim(),
+      });
+    } else {
+      const now = new Date();
+      onSave({
+        id: crypto.randomUUID(),
+        data: now.toISOString().slice(0, 10),
+        ora: now.toTimeString().slice(0, 5),
+        operatore: isUfficio ? (operatore.trim() || currentUser?.username) : currentUser?.username,
+        tipo, commessa: commessa.trim(), titolo: titolo.trim(), descrizione: descrizione.trim(),
+        created_at: now.toISOString(),
+      });
+    }
     onClose();
   };
 
@@ -325,7 +334,7 @@ function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [] }) {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b flex-shrink-0">
-          <h2 className="text-lg font-bold text-gray-800">Nuovo log</h2>
+          <h2 className="text-lg font-bold text-gray-800">{editEntry ? 'Modifica log' : 'Nuovo log'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
         </div>
         <div className="flex-1 overflow-auto px-5 py-4 space-y-4">
@@ -524,6 +533,7 @@ export default function App() {
   const [smartMode, setSmartMode]       = useState(() => localStorage.getItem('log_produzione_smart_mode') === 'true');
   const [showWizard, setShowWizard]     = useState(false);
   const [showForm, setShowForm]         = useState(false);
+  const [editEntry, setEditEntry]       = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [filterTipo, setFilterTipo]     = useState('');
   const [filterSearch, setFilterSearch] = useState('');
@@ -611,6 +621,10 @@ export default function App() {
   const handleDeleteLog = async (id) => {
     if (!confirm('Eliminare questo log?')) return;
     await handleSaveLogs(logs.filter(e => e.id !== id));
+  };
+
+  const handleEditLog = async (updatedEntry) => {
+    await handleSaveLogs(logs.map(e => e.id === updatedEntry.id ? updatedEntry : e));
   };
 
   const handleSaveUsers = async (newUsers) => {
@@ -793,12 +807,20 @@ export default function App() {
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
                     <span className="text-gray-300 text-xl">›</span>
-                    {canDelete && (
-                      <button
-                        onClick={ev => { ev.stopPropagation(); handleDeleteLog(e.id); }}
-                        className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors"
-                      >×</button>
-                    )}
+                    <div className="flex gap-1">
+                      {canDelete && (
+                        <button
+                          onClick={ev => { ev.stopPropagation(); setEditEntry(e); }}
+                          className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-400 hover:text-blue-600 flex items-center justify-center text-sm transition-colors"
+                        >✏️</button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={ev => { ev.stopPropagation(); handleDeleteLog(e.id); }}
+                          className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors"
+                        >×</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -847,12 +869,20 @@ export default function App() {
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0">
                           <span className="text-gray-300 text-xl">›</span>
-                          {canDelete && (
-                            <button
-                              onClick={ev => { ev.stopPropagation(); handleDeleteLog(e.id); }}
-                              className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors"
-                            >×</button>
-                          )}
+                          <div className="flex gap-1">
+                            {canDelete && (
+                              <button
+                                onClick={ev => { ev.stopPropagation(); setEditEntry(e); }}
+                                className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-400 hover:text-blue-600 flex items-center justify-center text-sm transition-colors"
+                              >✏️</button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={ev => { ev.stopPropagation(); handleDeleteLog(e.id); }}
+                                className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors"
+                              >×</button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -970,6 +1000,7 @@ export default function App() {
 
       {/* Modali */}
       {showForm     && <LogEntryForm onSave={handleAddLog} onClose={() => setShowForm(false)} currentUser={user} ddpCommesse={ddpCommesse} />}
+      {editEntry    && <LogEntryForm editEntry={editEntry} onSave={entry => { handleEditLog(entry); setEditEntry(null); }} onClose={() => setEditEntry(null)} currentUser={user} ddpCommesse={ddpCommesse} />}
       {showWizard   && <SmartLogWizard currentUsername={user.username} isUfficio={isUfficio} ddpCommesse={ddpCommesse} onSave={handleAddLog} onClose={() => setShowWizard(false)} />}
       {showSettings && <SettingsModal users={users} onSave={handleSaveUsers} onClose={() => setShowSettings(false)} currentUsername={user.username} isAdmin={isUfficio} />}
       {selectedLog  && <LogDetailModal entry={selectedLog} onClose={() => setSelectedLog(null)} />}
