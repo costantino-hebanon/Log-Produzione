@@ -529,6 +529,7 @@ export default function App() {
   const [filterSearch, setFilterSearch] = useState('');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [viewMode, setViewMode]         = useState('cronologico');
+  const [sortDir, setSortDir]           = useState('desc');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedLog, setSelectedLog]   = useState(null);
   const [ddpCommesse, setDdpCommesse]   = useState([]);
@@ -640,7 +641,7 @@ export default function App() {
   // ── Groups ──
   const groups         = groupLogs(filtered, viewMode === 'cronologico' ? 'data' : viewMode);
   const sortedKeys     = viewMode === 'cronologico'
-    ? Object.keys(groups).sort((a, b) => b.localeCompare(a))
+    ? Object.keys(groups).sort((a, b) => sortDir === 'desc' ? b.localeCompare(a) : a.localeCompare(b))
     : sortGroupKeys(Object.keys(groups), viewMode);
   const groupEntries   = selectedGroup ? (groups[selectedGroup] || []) : [];
 
@@ -937,6 +938,15 @@ export default function App() {
                 <option value="">Tutti i tipi</option>
                 {TIPI.map(t => <option key={t.value} value={t.value}>{t.icon} {t.label}</option>)}
               </select>
+            )}
+            {(viewMode === 'cronologico' || viewMode === 'miei') && (
+              <button
+                onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white shadow-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
+                title={sortDir === 'desc' ? 'Dal più recente' : 'Dal meno recente'}
+              >
+                {sortDir === 'desc' ? '↓ Recenti' : '↑ Vecchi'}
+              </button>
             )}
           </div>
         )}
