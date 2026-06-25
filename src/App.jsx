@@ -539,7 +539,7 @@ export default function App() {
   const [filterSearch, setFilterSearch] = useState('');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [viewMode, setViewMode]         = useState('cronologico');
-  const [sortDir, setSortDir]           = useState('desc');
+  const [sortDir, setSortDir]           = useState(() => localStorage.getItem('log_sort_dir') || 'desc');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedLog, setSelectedLog]   = useState(null);
   const [ddpCommesse, setDdpCommesse]   = useState([]);
@@ -971,7 +971,7 @@ export default function App() {
             )}
             {(viewMode === 'cronologico' || viewMode === 'miei') && (
               <button
-                onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                onClick={() => setSortDir(d => { const next = d === 'desc' ? 'asc' : 'desc'; localStorage.setItem('log_sort_dir', next); return next; })}
                 className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white shadow-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
                 title={sortDir === 'desc' ? 'Dal più recente' : 'Dal meno recente'}
               >
