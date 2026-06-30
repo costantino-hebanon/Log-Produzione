@@ -584,8 +584,8 @@ export default function App() {
       const hubToken = params.get('hub_token');
       if (hubUser && hubToken) {
         history.replaceState(null, '', window.location.pathname);
-        const found = mappedUsers.find(usr => usr.username?.toLowerCase() === hubUser.toLowerCase() && usr.password === hubToken && usr.enabled);
-        if (found && !user) {
+        const found = mappedUsers.find(usr => usr.username?.toLowerCase() === hubUser.toLowerCase() && usr.password === hubToken);
+        if (found) {
           localStorage.setItem('log_session', JSON.stringify(found));
           setUser(found);
         }
