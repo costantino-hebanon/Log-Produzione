@@ -582,13 +582,18 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const hubUser = params.get('hub_user');
       const hubToken = params.get('hub_token');
+      const commessaParam = params.get('commessa');
+      if (hubUser || hubToken || commessaParam) history.replaceState(null, '', window.location.pathname);
       if (hubUser && hubToken) {
-        history.replaceState(null, '', window.location.pathname);
         const found = mappedUsers.find(usr => usr.username?.toLowerCase() === hubUser.toLowerCase() && usr.password === hubToken);
         if (found) {
           localStorage.setItem('log_session', JSON.stringify(found));
           setUser(found);
         }
+      }
+      if (commessaParam) {
+        setViewMode('commessa');
+        setSelectedGroup(commessaParam);
       }
       setLoading(false);
     })();
