@@ -1,7 +1,7 @@
 # LOG Produzione — CLAUDE.md
 
 ## Reference dati & analisi
-[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../../Hebanon-Reference/HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-24.
+[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../../Hebanon-Reference/HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-30.
 Cartella locale: `F:\Claude sessioni\Hebanon-Reference\` · GitHub: [costantino-hebanon/Hebanon-M.E.S.](https://github.com/costantino-hebanon/Hebanon-M.E.S.)
 
 ## Scopo
@@ -106,6 +106,12 @@ npm run dev        # localhost:5173
 npm run build
 git add . && git commit -m "..." && git push   # deploy Vercel
 ```
+
+## SSO e deep-linking
+- URL params `?hub_user=<username>&hub_token=<hash>` → auto-login SSO dall'Hub (rimossi dopo il login)
+- URL param `?commessa=<nome>` → entra in `viewMode='commessa'` e seleziona `selectedGroup` automaticamente
+- Campo commessa nel form log: `<input type="text" list="datalist">` per ricerca/filtro testuale
+- SSO: rimosso controllo `&& usr.enabled` e rimosso guard `&& !user` (permetteva sovrascrittura sessione Hub)
 
 ## Note tecniche
 - SHA-256 hashing identico alle altre app (non reversibile)
