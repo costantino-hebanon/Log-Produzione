@@ -27,10 +27,27 @@ async function dbSet(key, value) {
 // Anagrafica condivisa con abilitazione per-app: LOG vede TUTTI gli utenti; l'accesso
 // è dato da apps.log.enabled. Campo `password` = hash (come si aspetta la UI LOG).
 // Compatibilità: slice presente senza `enabled` = abilitata (stato pre-modifica).
-const DEFAULT_LEVEL = 'produzione';
+const DEFAULT_LEVEL = 'user';
 const sliceEnabled = (slice) => !slice || slice.enabled !== false;
+function normalizeLevel(l) { return (l === 'ufficio' || l === 'admin') ? 'admin' : 'user'; }
+const ALL_APPS_SEED = (level, canBackup) => ({
+  ferramenta: { enabled: true, level, canBackup, canNotify: false },
+  magazzino:  { enabled: true, level, canBackup, canNotify: false },
+  ddp:        { enabled: true, level, canBackup, canNotify: false },
+  log:        { enabled: true, level, canBackup, canNotify: false },
+  pannelli:   { enabled: true, level, canBackup: false, canNotify: false },
+  analisi:    { enabled: true, level, canBackup: false, canNotify: false },
+});
 async function loadUsers() {
-  const all = (await dbGet('utenti')) || [];
+  let all = (await dbGet('utenti')) || [];
+  if (!all.length) {
+    const [h1, h2] = await Promise.all([sha256('admin'), sha256('user')]);
+    all = [
+      { id: '1', username: 'admin', password_hash: h1, apps: ALL_APPS_SEED('admin', true) },
+      { id: '2', username: 'user',  password_hash: h2, apps: ALL_APPS_SEED('user', false) },
+    ];
+    await dbSet('utenti', all);
+  }
   return all.map(u => {
     const s = u.apps?.[APP] || {};
     return {
@@ -38,7 +55,7 @@ async function loadUsers() {
       username: u.username,
       password: u.password_hash,
       enabled: sliceEnabled(u.apps?.[APP]),
-      level: s.level ?? DEFAULT_LEVEL,
+      level: normalizeLevel(s.level ?? DEFAULT_LEVEL),
       canBackup: !!s.canBackup,
       canNotify: !!s.canNotify,
     };
@@ -300,7 +317,7 @@ function LogDetailModal({ entry, onClose }) {
 
 // ── LogEntryForm ──────────────────────────────────────────────────────────────
 function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [], editEntry = null }) {
-  const isUfficio = currentUser?.level === 'ufficio';
+  const isUfficio = currentUser?.level === 'admin';
   const [tipo, setTipo]               = useState(editEntry?.tipo || 'annotazione');
   const [operatore, setOperatore]     = useState(editEntry?.operatore || currentUser?.username || '');
   const [commessa, setCommessa]       = useState(editEntry?.commessa || '');
@@ -389,7 +406,7 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
   const [rows, setRows]             = useState(users.map(u => ({ ...u })));
   const [editingIndex, setEditingIndex] = useState(null);
   const [showPwd, setShowPwd]       = useState(false);
-  const [newUser, setNewUser]       = useState({ username: '', password: '', level: 'produzione' });
+  const [newUser, setNewUser]       = useState({ username: '', password: '', level: 'user' });
   const [adding, setAdding]         = useState(false);
 
   const set = (i, k, v) => setRows(r => r.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
@@ -421,10 +438,10 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
     const hashed  = await sha256(newUser.password);
     const updated = [...rows, { username: newUser.username.trim(), password: hashed, enabled: true, level: newUser.level, canBackup: false, canNotify: false }];
     setRows(updated); onSave(updated);
-    setNewUser({ username: '', password: '', level: 'produzione' }); setAdding(false);
+    setNewUser({ username: '', password: '', level: 'user' }); setAdding(false);
   };
 
-  const LEVEL_LABEL = { ufficio: 'Ufficio tecnico', produzione: 'Produzione' };
+  const LEVEL_LABEL = { admin: 'Ufficio tecnico', user: 'Produzione' };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -464,8 +481,8 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
                       placeholder="Username" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />}
                     {isAdmin && <select value={row.level} onChange={e => set(i, 'level', e.target.value)}
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
-                      <option value="ufficio">Ufficio tecnico</option>
-                      <option value="produzione">Produzione</option>
+                      <option value="admin">Ufficio tecnico</option>
+                      <option value="user">Produzione</option>
                     </select>}
                     <div className="relative">
                       <input type={showPwd ? 'text' : 'password'} value={row._newPassword || ''}
@@ -509,12 +526,12 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
                 placeholder="Password" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <select value={newUser.level} onChange={e => setNewUser(u => ({ ...u, level: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
-                <option value="ufficio">Ufficio tecnico</option>
-                <option value="produzione">Produzione</option>
+                <option value="admin">Ufficio tecnico</option>
+                <option value="user">Produzione</option>
               </select>
               <div className="flex gap-2 pt-1">
                 <Btn small color="blue" onClick={handleAdd} disabled={!newUser.username.trim() || !newUser.password.trim()}>➕ Aggiungi</Btn>
-                <Btn small onClick={() => { setAdding(false); setNewUser({ username: '', password: '', level: 'produzione' }); }}>Annulla</Btn>
+                <Btn small onClick={() => { setAdding(false); setNewUser({ username: '', password: '', level: 'user' }); }}>Annulla</Btn>
               </div>
             </div>
           ))}
@@ -557,9 +574,22 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const [u, l, c] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse()]);
-      setUsers((u || []).map(usr => ({ canBackup: false, canNotify: false, ...usr })));
+      const mappedUsers = (u || []).map(usr => ({ canBackup: false, canNotify: false, ...usr }));
+      setUsers(mappedUsers);
       setLogs(l || []);
       setDdpCommesse(c);
+      // Hub SSO auto-login
+      const params = new URLSearchParams(window.location.search);
+      const hubUser = params.get('hub_user');
+      const hubToken = params.get('hub_token');
+      if (hubUser && hubToken) {
+        history.replaceState(null, '', window.location.pathname);
+        const found = mappedUsers.find(usr => usr.username?.toLowerCase() === hubUser.toLowerCase() && usr.password === hubToken && usr.enabled);
+        if (found && !user) {
+          localStorage.setItem('log_session', JSON.stringify(found));
+          setUser(found);
+        }
+      }
       setLoading(false);
     })();
   }, []);
