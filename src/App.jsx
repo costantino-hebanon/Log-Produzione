@@ -621,7 +621,7 @@ export default function App() {
 
   const changeView = (key) => { setViewMode(key); setSelectedGroup(null); };
 
-  const isUfficio = user?.level === 'ufficio';
+  const isUfficio = user?.level === 'admin'; // normalizeLevel converte 'ufficio' → 'admin'
 
   // ── Filtered logs ──
   const filtered = logs.filter(e => {

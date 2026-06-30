@@ -1,122 +1,101 @@
 # LOG Produzione — CLAUDE.md
 
-## Reference dati & analisi
-[📊 Hebanon — Reference dati, schemi DB e catalogo analisi](../../Hebanon-Reference/HEBANON-REFERENCE.md) — documento completo (DB unificato): architettura Supabase, schemi di tutte le app, modello utenti, flussi cross-app, catalogo analisi, avvertenze e blocco da incollare in chat. Aggiornato 2026-06-30.
-Cartella locale: `F:\Claude sessioni\Hebanon-Reference\` · GitHub: [costantino-hebanon/Hebanon-M.E.S.](https://github.com/costantino-hebanon/Hebanon-M.E.S.)
-
-## Scopo
-App per tracciare il log delle attività di produzione: cambi di progetto, variazioni in corso d'opera, annotazioni, osservazioni, decisioni prese durante conversazioni, ecc.
-
 ## Stack
-- **React 18 + Vite 5** — tutto in `src/App.jsx` + componenti in `src/components/`
-- **Tailwind CSS** via CDN in `index.html` (nessun `tailwind.config.js`)
-- **Supabase** — tabella `app_data`, progetto unificato `ckbolwvwnsabsblzcbet`. Credenziali in `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (`.env` gitignored)
-- **Vercel** — deploy + serverless function in `api/notify.js`
-- **OneSignal** — notifiche push (App ID: `08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb`)
 
-## Struttura file
+- React 18 + Vite 5, Tailwind CSS via CDN
+- Supabase (`@supabase/supabase-js` v2) — progetto unificato `ckbolwvwnsabsblzcbet`
+- Deploy: Vercel, push su `main` → deploy automatico
+- URL: https://log-produzione.vercel.app
+
+## Variabili d'ambiente
+
 ```
-src/
-  App.jsx                       # Tutto il codice principale
-  main.jsx                      # Entry point + registrazione SW
-  supabaseConfig.js             # Legge VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY da env
-  supabaseDDP.js                # loadDDPCommesse() — stesso DB unificato
-  components/
-    SmartLogView.jsx            # Vista fullscreen in Smart Mode
-    SmartLogWizard.jsx          # Wizard inserimento log (Smart Mode)
-api/
-  notify.js                     # Vercel serverless — push via OneSignal
-public/
-  manifest.json                 # PWA manifest
-  sw.js                         # Service worker base
-  OneSignalSDKWorker.js         # Service worker OneSignal (OBBLIGATORIO per push)
-  icon-192.png
-  icon-512.png
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 ```
 
-## Dati su Supabase
-Tabella `app_data`, progetto unificato `ckbolwvwnsabsblzcbet`:
-- `utenti` — anagrafica condivisa cross-app: `[{ id, username, password_hash, apps:{ log:{enabled,level,canBackup,canNotify}, … } }]`
-- `log_logs` — array di voci log (chiave logica `logs` rimappata via `KEY_REMAP` in App.jsx → `log_logs`):
-  ```json
-  {
-    "id": "uuid",
-    "data": "2026-06-19",
-    "ora": "10:30",
-    "operatore": "mario",
-    "tipo": "cambio_progetto",
-    "commessa": "CM-001",
-    "titolo": "Cambio materiale porta",
-    "descrizione": "Testo libero con dettagli...",
-    "created_at": "2026-06-19T10:30:00.000Z"
-  }
-  ```
+## Struttura dati (Supabase)
 
-> `log_logs` è attualmente vuoto (`[]`): nessuna voce reale inserita post-migrazione.
+| Tabella/chiave | Uso |
+|---|---|
+| `app_data` key `log_logs` | Log di produzione (lettura/scrittura) |
+| `commesse` | Anagrafica commesse — sola lettura |
+| `app_data` key `utenti` | Utenti condivisi tra tutte le app |
 
-## Tipi di log
-| Valore | Label | Icona |
+**KEY_REMAP**: il codice usa `dbGet('logs')` / `dbSet('logs', …)` tradotti internamente
+in `log_logs`. Non usare la chiave `logs` direttamente su Supabase.
+
+## Schema log entry
+
+```js
+{
+  id: string,          // UUID
+  data: string,        // 'YYYY-MM-DD'
+  ora: string,         // 'HH:MM'
+  operatore: string,
+  tipo: 'cambio_progetto' | 'variazione' | 'annotazione' | 'osservazione' | 'decisione',
+  commessa?: string,
+  titolo: string,
+  descrizione?: string,
+  created_at: string,
+  // NOTA: updated_at non presente — sort usa solo il campo `data` della voce
+}
+```
+
+## Autenticazione
+
+- Password hashata SHA-256 lato client
+- Sessione in `sessionStorage` chiave `log_session`; `APP_KEY = 'log'`
+- Slice utente: `apps.log = { enabled, level, canBackup, canNotify }`
+- `normalizeLevel`: `'ufficio'` → `'admin'`; tutto il resto → `'user'`
+- `isUfficio = user?.level === 'admin'`
+- Compatibilità: slice senza `enabled` = utente abilitato (stato pre-migrazione)
+
+## SSO Hub → App
+
+Query param: `?hub_user=<username>&hub_token=<sha256>`
+L'app verifica il token e apre la sessione senza richiedere password.
+
+## Deep-link
+
+Query param `?commessa=<codice>` → imposta `viewMode='commessa'` e preseleziona il gruppo.
+
+## Permessi
+
+| Livello | Modifica/elimina log altrui | Modifica/elimina propri |
 |---|---|---|
-| `cambio_progetto` | Cambio progetto | 🔄 |
-| `variazione` | Variazione | ⚠️ |
-| `annotazione` | Annotazione | 📝 |
-| `osservazione` | Osservazione | 👁️ |
-| `decisione` | Decisione | ✅ |
+| `admin` (ufficio) | Si | Si |
+| `user` (produzione) | No | Si |
 
-## Utenti e ruoli
-Anagrafica condivisa `utenti` — slice `apps.log.{enabled, level, canBackup, canNotify}`.
-- `level: 'ufficio'` — accesso completo, può eliminare qualsiasi log
-- `level: 'produzione'` — può aggiungere log e eliminare solo i propri
-- `canBackup`, `canNotify` — stessa logica delle altre app
-- Slice assente = utente abilitato (backward compat)
-- **⚙️ pulsante visibile a tutti**: ufficio vede tutti gli utenti con modifica completa; produzione vede solo il proprio profilo e può cambiare solo la propria password (`isAdmin={isUfficio}` passato a `SettingsModal`)
+## Viste disponibili
+
+1. **Cronologico** — tutti i log ordinati per data
+2. **Commessa** — raggruppati per codice commessa
+3. **Tipo** — raggruppati per tipo voce
+4. **Autore** — raggruppati per operatore
+5. **I miei LOG** — solo le voci dell'utente corrente
 
 ## Smart Mode
-- Toggle persistito in `localStorage` con chiave `log_produzione_smart_mode`
-- **OFF**: lista normale con filtri + FAB "+" per modal form (`LogEntryForm`)
-- **ON**: banner arancione → apre `SmartLogView` (fullscreen); FAB "+" → `SmartLogWizard`
-- `SmartLogWizard`: step 0 = selezione tipo con card grandi (auto-avanza), poi commessa → titolo → descrizione
-- `SmartLogView`: lista raggruppata per data con filtri, "Aggiungi log" in fondo
 
-## Notifiche push OneSignal
-- App ID: `08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb` (in `index.html`)
-- `public/OneSignalSDKWorker.js` — obbligatorio per la registrazione del service worker push
-- Tag `username` impostato su login (`os.User.addTag`), rimosso su logout
-- `api/notify.js` — serverless, usa `ONESIGNAL_APP_ID` e `ONESIGNAL_REST_API_KEY` da env vars
-- Il frontend LOG **non chiama ancora** `sendNotify` — i trigger di notifica non sono implementati
+Componente `SmartLogWizard` — wizard a step per guidare l'inserimento di nuove voci.
 
-## PWA / Install
-- `beforeinstallprompt` catturato → pulsante "📲 Installa app" verde nell'header
-- Service worker in `public/sw.js` (base, solo cache-then-network)
+## OneSignal (notifiche push)
 
-## Variabili d'ambiente Vercel
-Settings → Environment Variables:
-```
-VITE_SUPABASE_URL=https://ckbolwvwnsabsblzcbet.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon key>
-ONESIGNAL_APP_ID=08ba5dcc-dbd5-4c44-99c6-bf423f2eb1bb
-ONESIGNAL_REST_API_KEY=<os_v2_app_...>
-```
+- Worker: `public/OneSignalSDKWorker.js`
+- Al login: imposta tag `username` sul dispositivo
+- Al logout: rimuove il tag
+
+## Avvertenze / Bug noti
+
+- **KEY_REMAP**: usare sempre `dbGet('logs')` / `dbSet('logs', …)`, mai `log_logs` diretto.
+- **`updated_at` assente**: le voci log non hanno `updated_at`; sort solo su `data`.
+- **`saveUsers` distruttivo**: riscrive l'intera lista `utenti`. Utenti non inclusi
+  vengono eliminati da tutte le app — usare con cautela.
 
 ## Comandi
+
 ```bash
-cd "F:\Claude sessioni\LOG Produzione"
-npm install
-npm run dev        # localhost:5173
-npm run build
-git add . && git commit -m "..." && git push   # deploy Vercel
+npm run dev      # sviluppo locale
+npm run build    # build produzione
+npm run preview  # anteprima build
 ```
-
-## SSO e deep-linking
-- URL params `?hub_user=<username>&hub_token=<hash>` → auto-login SSO dall'Hub (rimossi dopo il login)
-- URL param `?commessa=<nome>` → entra in `viewMode='commessa'` e seleziona `selectedGroup` automaticamente
-- Campo commessa nel form log: `<input type="text" list="datalist">` per ricerca/filtro testuale
-- SSO: rimosso controllo `&& usr.enabled` e rimosso guard `&& !user` (permetteva sovrascrittura sessione Hub)
-
-## Note tecniche
-- SHA-256 hashing identico alle altre app (non reversibile)
-- `Btn` component definito inline in `App.jsx`
-- I log sono salvati in ordine inverso (più recente in cima all'array)
-- La visualizzazione normale raggruppa per data (`formatDate` riconosce "Oggi" e "Ieri")
-- `KEY_REMAP` in App.jsx mappa la chiave logica `logs` → `log_logs` (la chiave bare `logs` nel DB era usata da una versione precedente, ora rimossa)
-- `sliceEnabled(slice)`: `!slice || slice.enabled !== false` — slice assente = abilitato (backward compat)
