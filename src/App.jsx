@@ -221,67 +221,19 @@ function Btn({ children, onClick, color = 'gray', small, disabled, className = '
 
 // ── CommessaField ─────────────────────────────────────────────────────────────
 function CommessaField({ value, onChange, commesse }) {
-  const [showCustom, setShowCustom] = useState(false);
-  const [customVal, setCustomVal]   = useState('');
-
-  const isCustom = value && !commesse.includes(value);
-
-  const handleSelect = (e) => {
-    onChange(e.target.value);
-    setShowCustom(false);
-  };
-
-  const openCustom = () => {
-    setCustomVal(isCustom ? value : '');
-    setShowCustom(true);
-  };
-
-  const confirmCustom = () => {
-    if (customVal.trim()) onChange(customVal.trim());
-    setShowCustom(false);
-    setCustomVal('');
-  };
-
-  const cancelCustom = () => { setShowCustom(false); setCustomVal(''); };
-
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <select
-          value={isCustom ? '__custom__' : (value || '')}
-          onChange={handleSelect}
-          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white"
-        >
-          <option value="">— Nessuna —</option>
-          {commesse.map(c => <option key={c} value={c}>{c}</option>)}
-          {isCustom && <option value="__custom__">✏️ {value}</option>}
-        </select>
-        <button
-          type="button"
-          onClick={openCustom}
-          title="Inserisci nome personalizzato"
-          className={`px-3 rounded-xl border text-sm transition-colors ${
-            isCustom ? 'bg-blue-100 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-100'
-          }`}
-        >✏️</button>
-      </div>
-      {isCustom && !showCustom && (
-        <p className="text-xs text-blue-600 px-1">Personalizzata: <strong>{value}</strong></p>
-      )}
-      {showCustom && (
-        <div className="flex gap-2 items-center p-2 bg-blue-50 rounded-xl border border-blue-200">
-          <input
-            type="text"
-            value={customVal}
-            onChange={e => setCustomVal(e.target.value)}
-            placeholder="Nuovo"
-            className="flex-1 border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white"
-            onKeyDown={e => { if (e.key === 'Enter') confirmCustom(); if (e.key === 'Escape') cancelCustom(); }}
-          />
-          <button onClick={confirmCustom} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">✓</button>
-          <button onClick={cancelCustom} className="text-gray-400 hover:text-gray-600 text-xl px-1">×</button>
-        </div>
-      )}
+    <div>
+      <input
+        type="text"
+        list="log-commesse-dl"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="— Nessuna —"
+        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white"
+      />
+      <datalist id="log-commesse-dl">
+        {commesse.map(c => <option key={c} value={c} />)}
+      </datalist>
     </div>
   );
 }
