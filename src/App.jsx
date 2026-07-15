@@ -61,20 +61,29 @@ async function loadUsers() {
     };
   });
 }
-// Ri-costruisce l'anagrafica condivisa: aggiorna solo la slice apps.log; le persone
-// non più presenti vengono eliminate da tutte le app.
+// Aggiorna solo la slice apps.log nell'anagrafica condivisa; gli utenti rimossi
+// da questa app perdono solo l'accesso al LOG, non vengono cancellati globalmente.
 async function saveUsers(logUsers) {
   const all = (await dbGet('utenti')) || [];
-  const result = [];
+  // Parte da tutti gli utenti globali per non cancellare chi appartiene ad altre app
+  const result = all.map(u => ({ ...u, apps: { ...(u.apps || {}) } }));
   for (const lu of logUsers) {
-    let u = all.find(x => (lu.id && x.id === lu.id) || x.username.toLowerCase() === lu.username.toLowerCase());
-    u = u
-      ? { ...u, apps: { ...(u.apps || {}) } }
-      : { id: lu.id || (String(Date.now()) + Math.floor(Math.random() * 1e4)), username: lu.username, password_hash: '', apps: {} };
-    if (lu.password) u.password_hash = lu.password;
-    u.username = lu.username;
-    u.apps[APP] = { enabled: !!lu.enabled, level: lu.level, canBackup: !!lu.canBackup, canNotify: !!lu.canNotify };
-    result.push(u);
+    const idx = result.findIndex(x => (lu.id && x.id === lu.id) || x.username.toLowerCase() === lu.username.toLowerCase());
+    if (idx >= 0) {
+      const u = result[idx];
+      if (lu.password) u.password_hash = lu.password;
+      u.username = lu.username;
+      u.apps[APP] = { enabled: !!lu.enabled, level: lu.level, canBackup: !!lu.canBackup, canNotify: !!lu.canNotify };
+    } else {
+      const u = { id: lu.id || (String(Date.now()) + Math.floor(Math.random() * 1e4)), username: lu.username, password_hash: lu.password || '', apps: {} };
+      u.apps[APP] = { enabled: !!lu.enabled, level: lu.level, canBackup: !!lu.canBackup, canNotify: !!lu.canNotify };
+      result.push(u);
+    }
+  }
+  // Utenti non più in logUsers: rimuove solo la slice di questa app, non l'utente globale
+  for (const u of result) {
+    const managed = logUsers.some(lu => (lu.id && lu.id === u.id) || lu.username.toLowerCase() === u.username.toLowerCase());
+    if (!managed) delete u.apps[APP];
   }
   await dbSet('utenti', result);
 }
@@ -90,12 +99,20 @@ const TIPI = [
 const TIPO_MAP   = Object.fromEntries(TIPI.map(t => [t.value, t]));
 const TIPO_ORDER = TIPI.map(t => t.value);
 
+const CHECKLIST_TYPE = { value: 'checklist', label: 'Checklist', icon: '☑️', badge: 'bg-blue-100 text-blue-700' };
+function getTipoMeta(tipo) {
+  if (tipo === 'checklist') return CHECKLIST_TYPE;
+  return TIPO_MAP[tipo] || { label: tipo || 'annotazione', icon: '📝', badge: 'bg-gray-100 text-gray-700' };
+}
+
 const VIEW_TABS = [
-  { key: 'cronologico', label: 'Cronologico', icon: '📅' },
-  { key: 'commessa',    label: 'Commessa',    icon: '🏗️' },
-  { key: 'tipo',        label: 'Tipo',        icon: '🏷️' },
-  { key: 'autore',      label: 'Autore',      icon: '👤' },
-  { key: 'miei',        label: 'I miei LOG',  icon: '🙋' },
+  { key: 'cronologico',    label: 'Cronologico',      icon: '📅' },
+  { key: 'checklist',      label: 'Checklist',        icon: '☑️' },
+  { key: 'commessa',       label: 'Commessa',         icon: '🏗️' },
+  { key: 'tipo',           label: 'Tipo',             icon: '🏷️' },
+  { key: 'autore',         label: 'Autore',           icon: '👤' },
+  { key: 'miei_checklist', label: 'Le mie checklist', icon: '✅' },
+  { key: 'miei',           label: 'I miei LOG',       icon: '🙋' },
 ];
 
 const EMPTY_COMMESSA = '(Senza commessa)';
@@ -353,6 +370,222 @@ function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [], editEntr
   );
 }
 
+// ── ChecklistForm ─────────────────────────────────────────────────────────────
+function ChecklistForm({ onSave, onClose, ddpCommesse = [] }) {
+  const [nome, setNome]         = useState('');
+  const [commessa, setCommessa] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b flex-shrink-0">
+          <h2 className="text-lg font-bold text-gray-800">☑️ Nuova checklist</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Nome checklist *</label>
+            <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Es. Verifica pre-consegna…"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+              autoFocus />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Commessa <span className="font-normal text-gray-400">(opzionale)</span></label>
+            {ddpCommesse.length > 0
+              ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+              : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            }
+          </div>
+        </div>
+        <div className="px-5 pb-5 flex justify-end gap-2 flex-shrink-0 border-t pt-4">
+          <Btn onClick={onClose}>Annulla</Btn>
+          <Btn color="blue" onClick={() => { onSave(nome.trim(), commessa.trim()); onClose(); }} disabled={!nome.trim()}>☑️ Crea</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SmartChecklistForm ────────────────────────────────────────────────────────
+function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, ddpCommesse = [] }) {
+  const [nome, setNome]         = useState('');
+  const [commessa, setCommessa] = useState('');
+  const [itemText, setItemText] = useState('');
+  const [assignTo, setAssignTo] = useState('');
+  const [items, setItems]       = useState([]);
+
+  const addItem = () => {
+    const t = itemText.trim();
+    if (!t) return;
+    setItems(prev => [...prev, { testo: t, assignedTo: assignTo || null }]);
+    setItemText('');
+    setAssignTo('');
+  };
+
+  const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i));
+
+  const handleSubmit = () => {
+    if (!nome.trim()) return;
+    onSave(nome.trim(), commessa.trim(), items);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-lg flex flex-col max-h-[92vh]">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b flex-shrink-0">
+          <div>
+            <p className="text-lg font-bold text-gray-800">⚡ Checklist rapida</p>
+            <p className="text-xs text-amber-600 font-medium">Smart mode attivo</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+        </div>
+        <div className="flex-1 overflow-auto px-5 py-4 space-y-3">
+          <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome checklist *"
+            className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:border-amber-400"
+            autoFocus />
+          {ddpCommesse.length > 0
+            ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+            : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Commessa (opzionale)"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
+          }
+          <div className="border-t pt-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Elementi ↵ per aggiungere</p>
+            <div className="flex gap-2 mb-2">
+              <input type="text" value={itemText} onChange={e => setItemText(e.target.value)} placeholder="Descrivi l'elemento…"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                onKeyDown={e => { if (e.key === 'Enter') addItem(); }} />
+              <button onClick={addItem} disabled={!itemText.trim()}
+                className="px-3 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded-xl text-sm font-bold disabled:opacity-40 transition-colors">+</button>
+            </div>
+            {isUfficio && (
+              <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400 mb-2">
+                <option value="">— Nessun assegnatario —</option>
+                {users.map(u => <option key={u.username} value={u.username}>{u.username}</option>)}
+              </select>
+            )}
+            {items.length > 0 && (
+              <div className="space-y-1.5 mt-1">
+                {items.map((it, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                    <span className="text-blue-400 text-sm">☑</span>
+                    <span className="flex-1 text-sm text-gray-700">{it.testo}</span>
+                    {it.assignedTo && <span className="text-xs text-blue-500">→ {it.assignedTo}</span>}
+                    <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 text-base">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="px-5 pb-5 pt-3 flex justify-end gap-2 flex-shrink-0 border-t">
+          <Btn onClick={onClose}>Annulla</Btn>
+          <Btn color="amber" onClick={handleSubmit} disabled={!nome.trim()}>⚡ Crea {items.length > 0 ? `(${items.length})` : ''}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ChecklistDetail (component) ───────────────────────────────────────────────
+function ChecklistDetail({ cl, users, currentUser, isUfficio, onBack, onDelete, onCheckItem, onAddItem, onRemoveItem }) {
+  const [itemText, setItemText]   = useState('');
+  const [itemAssign, setItemAssign] = useState('');
+  const total = cl.items.length;
+  const done  = cl.items.filter(it => it.checked).length;
+  const canManage = isUfficio || cl.createdBy === currentUser.username;
+
+  const handleAdd = () => {
+    const t = itemText.trim();
+    if (!t) return;
+    onAddItem(cl.id, t, itemAssign || null);
+    setItemText('');
+    setItemAssign('');
+  };
+
+  return (
+    <div>
+      <button onClick={onBack} className="flex items-center gap-1 text-blue-600 text-sm font-semibold mb-3 hover:text-blue-700">
+        ← Tutte le checklist
+      </button>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-gray-800 leading-tight">{cl.nome}</p>
+            {cl.commessa && <span className="text-sm bg-gray-100 text-gray-600 rounded-full px-3 py-0.5 mt-1.5 inline-block">{cl.commessa}</span>}
+          </div>
+          {canManage && (
+            <button onClick={onDelete}
+              className="text-xs text-red-400 hover:text-red-600 border border-red-200 hover:border-red-400 rounded-lg px-2 py-1 transition-colors flex-shrink-0">
+              Elimina
+            </button>
+          )}
+        </div>
+        {total > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <span>{done} / {total} completati</span>
+              <span>{Math.round((done / total) * 100)}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-2">
+              <div className={`h-2 rounded-full transition-all ${done === total ? 'bg-green-500' : 'bg-blue-500'}`}
+                style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-2">Creata da {cl.createdBy} · {new Date(cl.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        {cl.items.length === 0 && (
+          <p className="text-center text-gray-400 py-8 text-sm">Nessun elemento — aggiungi il primo qui sotto</p>
+        )}
+        {cl.items.map(item => {
+          const canItemDelete = isUfficio || item.addedBy === currentUser.username;
+          return (
+            <div key={item.id} className={`bg-white rounded-xl border p-3 flex items-start gap-3 transition-all ${item.checked ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
+              <input type="checkbox" checked={item.checked}
+                onChange={e => onCheckItem(cl.id, item.id, e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-blue-600 flex-shrink-0 cursor-pointer" />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium leading-tight ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{item.testo}</p>
+                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 flex-wrap">
+                  {item.assignedTo && <span className="text-blue-500 font-medium">→ {item.assignedTo}</span>}
+                  <span>Aggiunto da {item.addedBy}</span>
+                  {item.checked && item.checkedBy && <span>· ✓ {item.checkedBy}</span>}
+                </p>
+              </div>
+              {canItemDelete && !item.checked && (
+                <button onClick={() => onRemoveItem(cl.id, item.id)}
+                  className="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-sm transition-colors flex-shrink-0">×</button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Aggiungi elemento</p>
+        <div className="flex gap-2 mb-2">
+          <input type="text" value={itemText} onChange={e => setItemText(e.target.value)}
+            placeholder="Descrizione elemento…"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+            onKeyDown={e => { if (e.key === 'Enter' && itemText.trim()) handleAdd(); }} />
+          <Btn color="blue" onClick={handleAdd} disabled={!itemText.trim()} small>+</Btn>
+        </div>
+        {isUfficio && (
+          <select value={itemAssign} onChange={e => setItemAssign(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+            <option value="">— Nessun assegnatario —</option>
+            {users.map(u => <option key={u.username} value={u.username}>{u.username}</option>)}
+          </select>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── SettingsModal ─────────────────────────────────────────────────────────────
 function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true }) {
   const [rows, setRows]             = useState(users.map(u => ({ ...u })));
@@ -516,6 +749,10 @@ export default function App() {
   const [loginUser, setLoginUser]       = useState('');
   const [loginPass, setLoginPass]       = useState('');
   const [loginErr, setLoginErr]         = useState('');
+  const [checklists, setChecklists]           = useState([]);
+  const [selectedChecklist, setSelectedChecklist] = useState(null);
+  const [showChecklistForm, setShowChecklistForm] = useState(false);
+  const [showSmartChecklist, setShowSmartChecklist] = useState(false);
 
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
@@ -525,17 +762,19 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [u, l, c] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse()]);
+      const [u, l, c, cl] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse(), dbGet('log_checklists')]);
       const mappedUsers = (u || []).map(usr => ({ canBackup: false, canNotify: false, ...usr }));
       setUsers(mappedUsers);
       setLogs(l || []);
       setDdpCommesse(c);
+      setChecklists(cl || []);
       // Hub SSO auto-login
       const params = new URLSearchParams(window.location.search);
       const hubUser = params.get('hub_user');
       const hubToken = params.get('hub_token');
       const commessaParam = params.get('commessa');
-      if (hubUser || hubToken || commessaParam) history.replaceState(null, '', window.location.pathname);
+      const tabParam = params.get('tab');
+      if (hubUser || hubToken || commessaParam || tabParam) history.replaceState(null, '', window.location.pathname);
       if (hubUser && hubToken) {
         const found = mappedUsers.find(usr => usr.username?.toLowerCase() === hubUser.toLowerCase() && usr.password === hubToken);
         if (found) {
@@ -543,7 +782,9 @@ export default function App() {
           setUser(found);
         }
       }
-      if (commessaParam) {
+      if (tabParam && ['cronologico','checklist','commessa','tipo','autore','miei_checklist','miei'].includes(tabParam)) {
+        setViewMode(tabParam);
+      } else if (commessaParam) {
         setViewMode('commessa');
         setSelectedGroup(commessaParam);
       }
@@ -619,12 +860,122 @@ export default function App() {
     await saveUsers(newUsers); // ri-fonde nella lista unificata `utenti`
   };
 
-  const changeView = (key) => { setViewMode(key); setSelectedGroup(null); };
+  // ── Checklist CRUD ──
+  const handleSaveChecklists = async (updated) => {
+    setChecklists(updated);
+    await dbSet('log_checklists', updated);
+  };
+
+  const handleCreateChecklist = async (nome, commessa, preItems = []) => {
+    const now = new Date();
+    const cl = {
+      id: crypto.randomUUID(),
+      nome,
+      commessa,
+      createdBy: user.username,
+      createdAt: now.toISOString(),
+      items: preItems.map(it => ({
+        id: crypto.randomUUID(),
+        testo: it.testo,
+        assignedTo: it.assignedTo || null,
+        checked: false,
+        checkedBy: null,
+        checkedAt: null,
+        addedBy: user.username,
+        addedAt: now.toISOString(),
+      })),
+    };
+    await handleSaveChecklists([...checklists, cl]);
+    await handleAddLog({
+      id: crypto.randomUUID(),
+      data: now.toISOString().slice(0, 10),
+      ora: now.toTimeString().slice(0, 5),
+      operatore: user.username,
+      tipo: 'checklist',
+      commessa,
+      titolo: `Creata checklist — ${nome}`,
+      checklistId: cl.id,
+      created_at: now.toISOString(),
+    });
+  };
+
+  const handleDeleteChecklist = async (id) => {
+    if (!confirm('Eliminare questa checklist e tutti i suoi elementi?')) return false;
+    await handleSaveChecklists(checklists.filter(c => c.id !== id));
+    if (selectedChecklist === id) setSelectedChecklist(null);
+    return true;
+  };
+
+  const handleAddChecklistItem = async (checklistId, testo, assignedTo) => {
+    const now = new Date();
+    const item = {
+      id: crypto.randomUUID(),
+      testo,
+      assignedTo: assignedTo || null,
+      checked: false,
+      checkedBy: null,
+      checkedAt: null,
+      addedBy: user.username,
+      addedAt: now.toISOString(),
+    };
+    const updated = checklists.map(c => c.id === checklistId ? { ...c, items: [...c.items, item] } : c);
+    await handleSaveChecklists(updated);
+    const cl = checklists.find(c => c.id === checklistId);
+    await handleAddLog({
+      id: crypto.randomUUID(),
+      data: now.toISOString().slice(0, 10),
+      ora: now.toTimeString().slice(0, 5),
+      operatore: user.username,
+      tipo: 'checklist',
+      commessa: cl?.commessa || '',
+      titolo: `Aggiunto: ${testo}`,
+      checklistId,
+      created_at: now.toISOString(),
+    });
+  };
+
+  const handleCheckItem = async (checklistId, itemId, checked) => {
+    const now = new Date();
+    const updated = checklists.map(c =>
+      c.id === checklistId
+        ? { ...c, items: c.items.map(it => it.id === itemId
+            ? { ...it, checked, checkedBy: checked ? user.username : null, checkedAt: checked ? now.toISOString() : null }
+            : it) }
+        : c
+    );
+    await handleSaveChecklists(updated);
+    if (checked) {
+      const cl = checklists.find(c => c.id === checklistId);
+      const item = cl?.items.find(it => it.id === itemId);
+      await handleAddLog({
+        id: crypto.randomUUID(),
+        data: now.toISOString().slice(0, 10),
+        ora: now.toTimeString().slice(0, 5),
+        operatore: user.username,
+        tipo: 'checklist',
+        commessa: cl?.commessa || '',
+        titolo: `Spuntato: ${item?.testo || ''}`,
+        checklistId,
+        created_at: now.toISOString(),
+      });
+    }
+  };
+
+  const handleRemoveChecklistItem = async (checklistId, itemId) => {
+    const updated = checklists.map(c =>
+      c.id === checklistId ? { ...c, items: c.items.filter(it => it.id !== itemId) } : c
+    );
+    await handleSaveChecklists(updated);
+  };
+
+  const changeView = (key) => { setViewMode(key); setSelectedGroup(null); setSelectedChecklist(null); };
 
   const isUfficio = user?.level === 'admin'; // normalizeLevel converte 'ufficio' → 'admin'
 
   // ── Filtered logs ──
   const filtered = logs.filter(e => {
+    // Checklist events only appear in cronologico/miei; excluded from tipo/commessa/autore grouping
+    if (e.tipo === 'checklist' && viewMode !== 'cronologico' && viewMode !== 'miei') return false;
     if (viewMode === 'miei' && e.operatore !== user.username) return false;
     if (filterTipo && e.tipo !== filterTipo) return false;
     if (filterSearch) {
@@ -834,13 +1185,24 @@ export default function App() {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{formatDate(date)}</p>
               <div className="space-y-2">
                 {groups[date].map(e => {
-                  const t = TIPO_MAP[e.tipo] || { label: e.tipo, icon: '📝', badge: 'bg-gray-100 text-gray-700' };
-                  const canDelete = isUfficio || e.operatore === user.username;
+                  const t = getTipoMeta(e.tipo);
+                  const isChecklistEvent = e.tipo === 'checklist';
+                  const canDelete = !isChecklistEvent && (isUfficio || e.operatore === user.username);
                   return (
                     <div
                       key={e.id}
-                      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-blue-200 hover:shadow-md cursor-pointer transition-all"
-                      onClick={() => setSelectedLog(e)}
+                      className={`bg-white rounded-2xl border shadow-sm p-4 hover:shadow-md cursor-pointer transition-all ${
+                        isChecklistEvent ? 'border-blue-200 hover:border-blue-400' : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                      onClick={() => {
+                        if (isChecklistEvent && e.checklistId) {
+                          setViewMode('checklist');
+                          setSelectedGroup(null);
+                          setSelectedChecklist(e.checklistId);
+                        } else {
+                          setSelectedLog(e);
+                        }
+                      }}
                     >
                       <div className="flex items-start gap-3">
                         <span className="text-2xl mt-0.5 flex-shrink-0">{t.icon}</span>
@@ -853,6 +1215,7 @@ export default function App() {
                           <p className="font-semibold text-gray-800 leading-tight">{e.titolo}</p>
                           {e.descrizione && <p className="text-sm text-gray-500 mt-1 line-clamp-2 leading-relaxed">{e.descrizione}</p>}
                           <p className="text-xs text-gray-400 mt-1.5">— {e.operatore}</p>
+                          {isChecklistEvent && <p className="text-xs text-blue-400 mt-0.5">Tocca per aprire la checklist →</p>}
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0">
                           <span className="text-gray-300 text-xl">›</span>
@@ -882,6 +1245,149 @@ export default function App() {
       )}
     </div>
   );
+
+  // ── CHECKLIST LIST ─────────────────────────────────────────────────────────
+  const renderChecklistList = () => {
+    const byCommessa = {};
+    checklists.forEach(cl => {
+      const key = cl.commessa?.trim() || '(Senza commessa)';
+      if (!byCommessa[key]) byCommessa[key] = [];
+      byCommessa[key].push(cl);
+    });
+    const keys = Object.keys(byCommessa).sort((a, b) => {
+      if (a === '(Senza commessa)') return 1;
+      if (b === '(Senza commessa)') return -1;
+      return a.localeCompare(b, 'it');
+    });
+
+    if (checklists.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+          <span className="text-5xl">☑️</span>
+          <p className="text-lg font-medium">Nessuna checklist presente</p>
+          <p className="text-sm">Usa il pulsante + per creare la prima</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {keys.map(key => (
+          <div key={key}>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{key}</p>
+            <div className="space-y-2">
+              {byCommessa[key].map(cl => {
+                const total = cl.items.length;
+                const done  = cl.items.filter(it => it.checked).length;
+                const myPending = cl.items.filter(it => it.assignedTo === user.username && !it.checked).length;
+                const canManage = isUfficio || cl.createdBy === user.username;
+                return (
+                  <div key={cl.id}
+                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all"
+                    onClick={() => setSelectedChecklist(cl.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-bold text-gray-800 text-base flex-1 min-w-0 truncate">{cl.nome}</p>
+                          {total > 0 && (
+                            <span className={`text-xs font-semibold rounded-full px-2 py-0.5 flex-shrink-0 ${done === total ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {done}/{total}
+                            </span>
+                          )}
+                        </div>
+                        {total > 0 && (
+                          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1.5">
+                            <div className={`h-1.5 rounded-full transition-all ${done === total ? 'bg-green-500' : 'bg-blue-500'}`}
+                              style={{ width: `${(done / total) * 100}%` }} />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs text-gray-400">da {cl.createdBy} · {new Date(cl.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</p>
+                          {myPending > 0 && (
+                            <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">{myPending} miei in sospeso</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-gray-300 text-xl">›</span>
+                        {canManage && (
+                          <button onClick={ev => { ev.stopPropagation(); handleDeleteChecklist(cl.id); }}
+                            className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors">×</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── CHECKLIST DETAIL ────────────────────────────────────────────────────────
+  const renderChecklistDetail = () => {
+    const cl = checklists.find(c => c.id === selectedChecklist);
+    if (!cl) return <p className="text-center text-gray-400 py-10">Checklist non trovata</p>;
+    return (
+      <ChecklistDetail
+        cl={cl}
+        users={users}
+        currentUser={user}
+        isUfficio={isUfficio}
+        onBack={() => setSelectedChecklist(null)}
+        onDelete={async () => { await handleDeleteChecklist(cl.id); }}
+        onCheckItem={handleCheckItem}
+        onAddItem={handleAddChecklistItem}
+        onRemoveItem={handleRemoveChecklistItem}
+      />
+    );
+  };
+
+  // ── LE MIE CHECKLIST ────────────────────────────────────────────────────────
+  const renderMieiChecklist = () => {
+    const myItems = [];
+    checklists.forEach(cl => {
+      cl.items.forEach(item => {
+        if (item.assignedTo === user.username && !item.checked) {
+          myItems.push({ ...item, clId: cl.id, clNome: cl.nome, clCommessa: cl.commessa });
+        }
+      });
+    });
+
+    if (myItems.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+          <span className="text-5xl">✅</span>
+          <p className="text-lg font-medium">Nessun elemento in sospeso</p>
+          <p className="text-sm">Ottimo! Non hai compiti assegnati in attesa</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-gray-400 mb-3">{myItems.length} elemento{myItems.length !== 1 ? 'i' : ''} in sospeso</p>
+        {myItems.map(item => (
+          <div key={`${item.clId}-${item.id}`} className="bg-white rounded-2xl border border-blue-200 shadow-sm p-4 flex items-start gap-3">
+            <input type="checkbox" checked={false}
+              onChange={() => handleCheckItem(item.clId, item.id, true)}
+              className="w-5 h-5 mt-0.5 accent-blue-600 flex-shrink-0 cursor-pointer" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800 leading-tight">{item.testo}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <button onClick={() => { setViewMode('checklist'); setSelectedChecklist(item.clId); }}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium">☑️ {item.clNome}</button>
+                {item.clCommessa && <span className="text-xs text-gray-400">{item.clCommessa}</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   // ── MAIN RENDER ────────────────────────────────────────────────────────────
   return (
@@ -940,8 +1446,8 @@ export default function App() {
       <div className="max-w-3xl mx-auto px-4 py-4">
 
 
-        {/* Filters */}
-        {!selectedGroup && (
+        {/* Filters — only for log views, not checklist views */}
+        {!selectedGroup && viewMode !== 'checklist' && viewMode !== 'miei_checklist' && (
           <div className="flex gap-2 mb-4">
             <input type="text"
               className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400 bg-white shadow-sm"
@@ -969,16 +1475,27 @@ export default function App() {
         )}
 
         {/* Content */}
-        {(viewMode === 'cronologico' || viewMode === 'miei')
-          ? renderCronologico()
-          : selectedGroup
-            ? renderDrillDown()
-            : renderGroupCards()
+        {viewMode === 'checklist'
+          ? (selectedChecklist ? renderChecklistDetail() : renderChecklistList())
+          : viewMode === 'miei_checklist'
+            ? renderMieiChecklist()
+            : (viewMode === 'cronologico' || viewMode === 'miei')
+              ? renderCronologico()
+              : selectedGroup
+                ? renderDrillDown()
+                : renderGroupCards()
         }
       </div>
 
-      {/* FAB */}
-      {!selectedGroup && (
+      {/* FAB — checklist tab */}
+      {viewMode === 'checklist' && !selectedChecklist && (
+        <button
+          onClick={() => smartMode ? setShowSmartChecklist(true) : setShowChecklistForm(true)}
+          className="fixed bottom-6 right-6 w-16 h-16 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-full shadow-xl text-3xl flex items-center justify-center transition-colors z-30"
+        >+</button>
+      )}
+      {/* FAB — log tabs */}
+      {viewMode !== 'checklist' && viewMode !== 'miei_checklist' && !selectedGroup && (
         <button
           onClick={() => smartMode ? setShowWizard(true) : setShowForm(true)}
           className="fixed bottom-6 right-6 w-16 h-16 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-full shadow-xl text-3xl flex items-center justify-center transition-colors z-30"
@@ -986,6 +1503,8 @@ export default function App() {
       )}
 
       {/* Modali */}
+      {showChecklistForm && <ChecklistForm onSave={handleCreateChecklist} onClose={() => setShowChecklistForm(false)} ddpCommesse={ddpCommesse} />}
+      {showSmartChecklist && <SmartChecklistForm onSave={handleCreateChecklist} onClose={() => setShowSmartChecklist(false)} users={users} isUfficio={isUfficio} ddpCommesse={ddpCommesse} />}
       {showForm     && <LogEntryForm onSave={handleAddLog} onClose={() => setShowForm(false)} currentUser={user} ddpCommesse={ddpCommesse} />}
       {editEntry    && <LogEntryForm editEntry={editEntry} onSave={entry => { handleEditLog(entry); setEditEntry(null); }} onClose={() => setEditEntry(null)} currentUser={user} ddpCommesse={ddpCommesse} />}
       {showWizard   && <SmartLogWizard currentUsername={user.username} isUfficio={isUfficio} ddpCommesse={ddpCommesse} onSave={handleAddLog} onClose={() => setShowWizard(false)} />}
