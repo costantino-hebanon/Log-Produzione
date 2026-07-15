@@ -666,6 +666,13 @@ function ChecklistDetail({ cl, users, currentUser, isUfficio, onBack, onDelete, 
         )}
         {cl.items.map(item => {
           const canItemDelete = isUfficio || item.addedBy === currentUser.username;
+          const checkedWhen = item.checkedAt ? (() => {
+            const d = new Date(item.checkedAt);
+            const isToday = d.toDateString() === new Date().toDateString();
+            return isToday
+              ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+              : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+          })() : null;
           return (
             <div key={item.id} className={`bg-white rounded-xl border p-3 flex items-start gap-3 transition-all ${item.checked ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
               <input type="checkbox" checked={item.checked}
@@ -676,7 +683,9 @@ function ChecklistDetail({ cl, users, currentUser, isUfficio, onBack, onDelete, 
                 <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 flex-wrap">
                   {item.assignedTo && <span className="text-blue-500 font-medium">→ {item.assignedTo}</span>}
                   <span>Aggiunto da {item.addedBy}</span>
-                  {item.checked && item.checkedBy && <span>· ✓ {item.checkedBy}</span>}
+                  {item.checked && item.checkedBy && (
+                    <span>· ✓ {item.checkedBy}{checkedWhen ? ` · ${checkedWhen}` : ''}</span>
+                  )}
                 </p>
               </div>
               {canItemDelete && !item.checked && (
@@ -1052,6 +1061,7 @@ export default function App() {
       tipo: 'checklist',
       commessa: cl?.commessa || '',
       titolo: `Aggiunto: ${testo}`,
+      checklistNome: cl?.nome || '',
       checklistId,
       created_at: now.toISOString(),
     });
@@ -1059,6 +1069,8 @@ export default function App() {
 
   const handleCheckItem = async (checklistId, itemId, checked) => {
     const now = new Date();
+    const cl = checklists.find(c => c.id === checklistId);
+    const item = cl?.items.find(it => it.id === itemId);
     const updated = checklists.map(c =>
       c.id === checklistId
         ? { ...c, items: c.items.map(it => it.id === itemId
@@ -1068,8 +1080,6 @@ export default function App() {
     );
     await handleSaveChecklists(updated);
     if (checked) {
-      const cl = checklists.find(c => c.id === checklistId);
-      const item = cl?.items.find(it => it.id === itemId);
       await handleAddLog({
         id: crypto.randomUUID(),
         data: now.toISOString().slice(0, 10),
@@ -1078,9 +1088,17 @@ export default function App() {
         tipo: 'checklist',
         commessa: cl?.commessa || '',
         titolo: `Spuntato: ${item?.testo || ''}`,
+        checklistNome: cl?.nome || '',
         checklistId,
+        itemId,
         created_at: now.toISOString(),
       });
+    } else {
+      const without = logs.filter(e =>
+        !(e.tipo === 'checklist' && e.checklistId === checklistId &&
+          (e.itemId === itemId || e.titolo === `Spuntato: ${item?.testo || ''}`))
+      );
+      if (without.length < logs.length) await handleSaveLogs(without);
     }
   };
 
@@ -1338,7 +1356,11 @@ export default function App() {
                           <p className="font-semibold text-gray-800 leading-tight">{e.titolo}</p>
                           {e.descrizione && <p className="text-sm text-gray-500 mt-1 line-clamp-2 leading-relaxed">{e.descrizione}</p>}
                           <p className="text-xs text-gray-400 mt-1.5">— {e.operatore}</p>
-                          {isChecklistEvent && <p className="text-xs text-blue-400 mt-0.5">Tocca per aprire la checklist →</p>}
+                          {isChecklistEvent && (
+                            <p className="text-xs text-blue-400 mt-0.5">
+                              {e.checklistNome ? `☑️ ${e.checklistNome} · ` : ''}Tocca per aprire →
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0">
                           <span className="text-gray-300 text-xl">›</span>
