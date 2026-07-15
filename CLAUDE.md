@@ -38,7 +38,9 @@ in `log_logs`. Non usare la chiave `logs` direttamente su Supabase.
   commessa?: string,
   titolo: string,
   descrizione?: string,
-  checklistId?: string, // presente solo quando tipo === 'checklist' — usato per navigazione
+  checklistId?: string,   // presente quando tipo === 'checklist' — usato per navigazione
+  itemId?: string,        // presente per eventi "Spuntato: X" — usato per rimozione precisa
+  checklistNome?: string, // nome della checklist — mostrato nel cronologico per contesto
   created_at: string,
   // NOTA: updated_at non presente — sort usa solo il campo `data` della voce
 }
@@ -71,6 +73,18 @@ in `log_logs`. Non usare la chiave `logs` direttamente su Supabase.
 **preItems pattern**: `handleCreateChecklist(nome, commessa, preItems=[])` crea tutti gli
 item in un colpo solo con una singola voce in log_logs ("Creata checklist — nome"), evitando
 spam di "Aggiunto: X" nel Cronologico. ChecklistForm e SmartChecklistForm usano entrambi preItems.
+
+**Logica log spunta/deselect** (`handleCheckItem`):
+- `checked = true` → scrive entry in log_logs con `tipo: 'checklist'`, `titolo: 'Spuntato: X'`, `itemId`, `checklistNome`
+- `checked = false` → rimuove silenziosamente (senza confirm) l'entry corrispondente dal log,
+  cercando per `checklistId + itemId` (entry nuove) o fallback su `titolo` (entry vecchie senza itemId)
+- Se non trova nessuna entry corrispondente, non fa nulla
+
+**Cronologico — eventi checklist**: mostrano `☑️ <checklistNome> · Tocca per aprire →` sotto
+il titolo, così "Spuntato: X" e "Aggiunto: X" hanno contesto su quale checklist appartengono.
+
+**ChecklistDetail — item completati**: mostrano orario (se spuntato oggi) o data breve (se altro
+giorno) accanto a `checkedBy`, es. `· ✓ mario · 14:32` oppure `· ✓ mario · 10 lug`.
 
 ## Autenticazione
 
