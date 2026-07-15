@@ -371,35 +371,81 @@ function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [], editEntr
 }
 
 // ── ChecklistForm ─────────────────────────────────────────────────────────────
-function ChecklistForm({ onSave, onClose, ddpCommesse = [] }) {
+function ChecklistForm({ onSave, onClose, ddpCommesse = [], users = [], isUfficio = false }) {
   const [nome, setNome]         = useState('');
   const [commessa, setCommessa] = useState('');
+  const [itemText, setItemText] = useState('');
+  const [assignTo, setAssignTo] = useState('');
+  const [items, setItems]       = useState([]);
+
+  const addItem = () => {
+    const t = itemText.trim();
+    if (!t) return;
+    setItems(prev => [...prev, { testo: t, assignedTo: assignTo || null }]);
+    setItemText('');
+    setAssignTo('');
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white w-full rounded-t-3xl sm:rounded-2xl shadow-2xl sm:max-w-md flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-800">☑️ Nuova checklist</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
         </div>
-        <div className="px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-auto px-5 py-4 space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Nome checklist *</label>
             <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Es. Verifica pre-consegna…"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-              autoFocus />
+              autoFocus onKeyDown={e => { if (e.key === 'Enter') document.getElementById('cl-commessa-std')?.focus(); }} />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Commessa <span className="font-normal text-gray-400">(opzionale)</span></label>
             {ddpCommesse.length > 0
               ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
-              : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
+              : <input id="cl-commessa-std" type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
             }
+          </div>
+          <div className="border-t pt-4">
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+              Elementi iniziali <span className="font-normal text-gray-400">(opzionale — ↵ per aggiungere)</span>
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input type="text" value={itemText} onChange={e => setItemText(e.target.value)}
+                placeholder="Descrivi l'elemento…"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                onKeyDown={e => { if (e.key === 'Enter') addItem(); }} />
+              <Btn color="blue" small onClick={addItem} disabled={!itemText.trim()}>+</Btn>
+            </div>
+            {isUfficio && (
+              <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-400 mb-2">
+                <option value="">— Nessun assegnatario —</option>
+                {users.map(u => <option key={u.username} value={u.username}>{u.username}</option>)}
+              </select>
+            )}
+            {items.length > 0 && (
+              <div className="space-y-1.5">
+                {items.map((it, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                    <span className="text-gray-300 text-base">☐</span>
+                    <span className="flex-1 text-sm text-gray-700">{it.testo}</span>
+                    {it.assignedTo && <span className="text-xs text-blue-500 font-medium">→ {it.assignedTo}</span>}
+                    <button onClick={() => setItems(prev => prev.filter((_, idx) => idx !== i))}
+                      className="text-gray-300 hover:text-red-400 text-base transition-colors">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="px-5 pb-5 flex justify-end gap-2 flex-shrink-0 border-t pt-4">
           <Btn onClick={onClose}>Annulla</Btn>
-          <Btn color="blue" onClick={() => { onSave(nome.trim(), commessa.trim()); onClose(); }} disabled={!nome.trim()}>☑️ Crea</Btn>
+          <Btn color="blue" onClick={() => { onSave(nome.trim(), commessa.trim(), items); onClose(); }} disabled={!nome.trim()}>
+            ☑️ Crea{items.length > 0 ? ` (${items.length})` : ''}
+          </Btn>
         </div>
       </div>
     </div>
@@ -408,6 +454,7 @@ function ChecklistForm({ onSave, onClose, ddpCommesse = [] }) {
 
 // ── SmartChecklistForm ────────────────────────────────────────────────────────
 function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, ddpCommesse = [] }) {
+  const [step, setStep]         = useState(1);
   const [nome, setNome]         = useState('');
   const [commessa, setCommessa] = useState('');
   const [itemText, setItemText] = useState('');
@@ -424,8 +471,13 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
 
   const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i));
 
-  const handleSubmit = () => {
+  const goToStep2 = () => {
     if (!nome.trim()) return;
+    setStep(2);
+    setTimeout(() => document.getElementById('smart-item-input')?.focus(), 50);
+  };
+
+  const handleSubmit = () => {
     onSave(nome.trim(), commessa.trim(), items);
     onClose();
   };
@@ -433,55 +485,126 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-lg flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b flex-shrink-0">
-          <div>
-            <p className="text-lg font-bold text-gray-800">⚡ Checklist rapida</p>
-            <p className="text-xs text-amber-600 font-medium">Smart mode attivo</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
-        </div>
-        <div className="flex-1 overflow-auto px-5 py-4 space-y-3">
-          <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome checklist *"
-            className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:border-amber-400"
-            autoFocus />
-          {ddpCommesse.length > 0
-            ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
-            : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Commessa (opzionale)"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
-          }
-          <div className="border-t pt-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Elementi ↵ per aggiungere</p>
-            <div className="flex gap-2 mb-2">
-              <input type="text" value={itemText} onChange={e => setItemText(e.target.value)} placeholder="Descrivi l'elemento…"
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
-                onKeyDown={e => { if (e.key === 'Enter') addItem(); }} />
-              <button onClick={addItem} disabled={!itemText.trim()}
-                className="px-3 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded-xl text-sm font-bold disabled:opacity-40 transition-colors">+</button>
-            </div>
-            {isUfficio && (
-              <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400 mb-2">
-                <option value="">— Nessun assegnatario —</option>
-                {users.map(u => <option key={u.username} value={u.username}>{u.username}</option>)}
-              </select>
-            )}
-            {items.length > 0 && (
-              <div className="space-y-1.5 mt-1">
-                {items.map((it, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
-                    <span className="text-blue-400 text-sm">☑</span>
-                    <span className="flex-1 text-sm text-gray-700">{it.testo}</span>
-                    {it.assignedTo && <span className="text-xs text-blue-500">→ {it.assignedTo}</span>}
-                    <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 text-base">×</button>
-                  </div>
-                ))}
+
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚡</span>
+              <div>
+                <p className="text-base font-bold text-gray-800 leading-none">Nuova checklist</p>
+                <p className="text-xs text-amber-500 font-semibold mt-0.5">Smart mode</p>
               </div>
-            )}
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-xl">×</button>
+          </div>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-all ${step === 1 ? 'bg-amber-400 text-white' : 'bg-green-500 text-white'}`}>
+                {step > 1 ? '✓' : '1'}
+              </div>
+              <span className={`text-xs font-semibold ${step === 1 ? 'text-gray-700' : 'text-green-600'}`}>Dettagli</span>
+            </div>
+            <div className={`flex-1 h-0.5 rounded ${step > 1 ? 'bg-green-400' : 'bg-gray-200'}`} />
+            <div className="flex items-center gap-1.5">
+              <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-all ${step === 2 ? 'bg-amber-400 text-white' : 'bg-gray-200 text-gray-400'}`}>2</div>
+              <span className={`text-xs font-semibold ${step === 2 ? 'text-gray-700' : 'text-gray-400'}`}>Elementi</span>
+            </div>
           </div>
         </div>
-        <div className="px-5 pb-5 pt-3 flex justify-end gap-2 flex-shrink-0 border-t">
-          <Btn onClick={onClose}>Annulla</Btn>
-          <Btn color="amber" onClick={handleSubmit} disabled={!nome.trim()}>⚡ Crea {items.length > 0 ? `(${items.length})` : ''}</Btn>
+
+        <div className="h-px bg-gray-100 flex-shrink-0" />
+
+        {/* Step 1 — Dettagli */}
+        {step === 1 && (
+          <div className="flex-1 overflow-auto px-5 py-5 space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Nome checklist *</label>
+              <input id="smart-nome-input" type="text" value={nome} onChange={e => setNome(e.target.value)}
+                placeholder="Es. Verifica pre-consegna cantiere…"
+                className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-amber-400 transition-colors"
+                autoFocus onKeyDown={e => { if (e.key === 'Enter') goToStep2(); }} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                Commessa <span className="font-normal text-gray-400 normal-case">(opzionale)</span>
+              </label>
+              {ddpCommesse.length > 0
+                ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+                : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
+                    className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 transition-colors"
+                    onKeyDown={e => { if (e.key === 'Enter') goToStep2(); }} />
+              }
+            </div>
+            <div className="bg-amber-50 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+              <span className="text-amber-400 text-base mt-0.5">💡</span>
+              <p className="text-xs text-amber-700 leading-relaxed">Nel passo successivo aggiungerai gli elementi della checklist — tutti creati in un colpo solo, senza voci ridondanti in cronologia.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Elementi */}
+        {step === 2 && (
+          <div className="flex-1 overflow-auto px-5 py-4 flex flex-col gap-3">
+            {/* Riepilogo header commessa */}
+            <div className="bg-amber-50 rounded-2xl px-4 py-2.5 flex items-center gap-2">
+              <span className="text-amber-500 text-base">☑️</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800 truncate">{nome}</p>
+                {commessa && <p className="text-xs text-amber-600">{commessa}</p>}
+              </div>
+              <button onClick={() => setStep(1)} className="text-xs text-amber-600 hover:text-amber-800 font-medium underline underline-offset-2">modifica</button>
+            </div>
+
+            {/* Input elemento */}
+            <div className="bg-gray-50 rounded-2xl p-3 space-y-2">
+              <div className="flex gap-2">
+                <input id="smart-item-input" type="text" value={itemText} onChange={e => setItemText(e.target.value)}
+                  placeholder="Descrivi l'elemento… (↵ per aggiungere)"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400 transition-colors"
+                  onKeyDown={e => { if (e.key === 'Enter') addItem(); }} />
+                <button onClick={addItem} disabled={!itemText.trim()}
+                  className="w-10 h-10 bg-amber-400 hover:bg-amber-500 disabled:opacity-40 text-white rounded-xl text-lg font-bold transition-colors flex-shrink-0 flex items-center justify-center">+</button>
+              </div>
+              {isUfficio && (
+                <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400">
+                  <option value="">— Nessun assegnatario —</option>
+                  {users.map(u => <option key={u.username} value={u.username}>{u.username}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* Lista elementi */}
+            <div className="flex-1 space-y-1.5">
+              {items.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                  <span className="text-3xl mb-2 opacity-40">☐</span>
+                  <p className="text-sm">Ancora nessun elemento</p>
+                  <p className="text-xs mt-0.5">Puoi creare la checklist vuota e aggiungerne dopo</p>
+                </div>
+              )}
+              {items.map((it, i) => (
+                <div key={i} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-xl px-3 py-2.5 shadow-sm">
+                  <span className="text-amber-400 text-base flex-shrink-0">☐</span>
+                  <span className="flex-1 text-sm text-gray-700">{it.testo}</span>
+                  {it.assignedTo && <span className="text-xs text-blue-500 font-medium bg-blue-50 px-2 py-0.5 rounded-full">→ {it.assignedTo}</span>}
+                  <button onClick={() => removeItem(i)} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors text-base flex-shrink-0">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="h-px bg-gray-100 flex-shrink-0" />
+        <div className="px-5 py-4 flex justify-between items-center flex-shrink-0">
+          <Btn onClick={step === 1 ? onClose : () => setStep(1)}>{step === 1 ? 'Annulla' : '← Indietro'}</Btn>
+          {step === 1
+            ? <Btn color="amber" onClick={goToStep2} disabled={!nome.trim()}>Avanti →</Btn>
+            : <Btn color="amber" onClick={handleSubmit}>⚡ Crea{items.length > 0 ? ` (${items.length})` : ''}</Btn>
+          }
         </div>
       </div>
     </div>
@@ -549,7 +672,7 @@ function ChecklistDetail({ cl, users, currentUser, isUfficio, onBack, onDelete, 
                 onChange={e => onCheckItem(cl.id, item.id, e.target.checked)}
                 className="w-5 h-5 mt-0.5 accent-blue-600 flex-shrink-0 cursor-pointer" />
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium leading-tight ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{item.testo}</p>
+                <p className={`text-sm font-medium leading-tight ${item.checked ? 'text-gray-400' : 'text-gray-800'}`}>{item.testo}</p>
                 <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 flex-wrap">
                   {item.assignedTo && <span className="text-blue-500 font-medium">→ {item.assignedTo}</span>}
                   <span>Aggiunto da {item.addedBy}</span>
@@ -1503,7 +1626,7 @@ export default function App() {
       )}
 
       {/* Modali */}
-      {showChecklistForm && <ChecklistForm onSave={handleCreateChecklist} onClose={() => setShowChecklistForm(false)} ddpCommesse={ddpCommesse} />}
+      {showChecklistForm && <ChecklistForm onSave={handleCreateChecklist} onClose={() => setShowChecklistForm(false)} ddpCommesse={ddpCommesse} users={users} isUfficio={isUfficio} />}
       {showSmartChecklist && <SmartChecklistForm onSave={handleCreateChecklist} onClose={() => setShowSmartChecklist(false)} users={users} isUfficio={isUfficio} ddpCommesse={ddpCommesse} />}
       {showForm     && <LogEntryForm onSave={handleAddLog} onClose={() => setShowForm(false)} currentUser={user} ddpCommesse={ddpCommesse} />}
       {editEntry    && <LogEntryForm editEntry={editEntry} onSave={entry => { handleEditLog(entry); setEditEntry(null); }} onClose={() => setEditEntry(null)} currentUser={user} ddpCommesse={ddpCommesse} />}
