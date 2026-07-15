@@ -3,7 +3,7 @@
 ## Stack
 
 - React 18 + Vite 5, Tailwind CSS via CDN
-- Supabase (`@supabase/supabase-js` v2) — progetto unificato `ckbolwvwnsabsblzcbet`
+- Supabase (`@supabase/supabase-js` v2) — progetto unificato `ckbolwvwnsabsblzcbet` — **password dashboard:** `Basile@1830!`
 - Deploy: Vercel, push su `main` → deploy automatico
 - URL: https://log-produzione.vercel.app
 
@@ -19,6 +19,7 @@ VITE_SUPABASE_ANON_KEY=
 | Tabella/chiave | Uso |
 |---|---|
 | `app_data` key `log_logs` | Log di produzione (lettura/scrittura) |
+| `app_data` key `log_checklists` | Checklist di progetto (lettura/scrittura) |
 | `commesse` | Anagrafica commesse — sola lettura |
 | `app_data` key `utenti` | Utenti condivisi tra tutte le app |
 
@@ -33,14 +34,43 @@ in `log_logs`. Non usare la chiave `logs` direttamente su Supabase.
   data: string,        // 'YYYY-MM-DD'
   ora: string,         // 'HH:MM'
   operatore: string,
-  tipo: 'cambio_progetto' | 'variazione' | 'annotazione' | 'osservazione' | 'decisione',
+  tipo: 'cambio_progetto' | 'variazione' | 'annotazione' | 'osservazione' | 'decisione' | 'checklist',
   commessa?: string,
   titolo: string,
   descrizione?: string,
+  checklistId?: string, // presente solo quando tipo === 'checklist' — usato per navigazione
   created_at: string,
   // NOTA: updated_at non presente — sort usa solo il campo `data` della voce
 }
 ```
+
+## Schema checklist entry
+
+```js
+{
+  id: string,        // UUID
+  nome: string,
+  commessa: string,  // opzionale
+  createdBy: string,
+  createdAt: string, // ISO timestamp
+  items: [
+    {
+      id: string,
+      testo: string,
+      assignedTo: string | null,
+      checked: boolean,
+      checkedBy: string | null,
+      checkedAt: string | null,
+      addedBy: string,
+      addedAt: string,
+    }
+  ]
+}
+```
+
+**preItems pattern**: `handleCreateChecklist(nome, commessa, preItems=[])` crea tutti gli
+item in un colpo solo con una singola voce in log_logs ("Creata checklist — nome"), evitando
+spam di "Aggiunto: X" nel Cronologico. ChecklistForm e SmartChecklistForm usano entrambi preItems.
 
 ## Autenticazione
 
@@ -69,15 +99,40 @@ Query param `?commessa=<codice>` → imposta `viewMode='commessa'` e preselezion
 
 ## Viste disponibili
 
-1. **Cronologico** — tutti i log ordinati per data
-2. **Commessa** — raggruppati per codice commessa
-3. **Tipo** — raggruppati per tipo voce
-4. **Autore** — raggruppati per operatore
-5. **I miei LOG** — solo le voci dell'utente corrente
+1. **Cronologico** — tutti i log ordinati per data (include eventi checklist cliccabili)
+2. **Checklist** — lista checklist + vista dettaglio singola checklist con progress bar
+3. **Commessa** — raggruppati per codice commessa
+4. **Tipo** — raggruppati per tipo voce
+5. **Autore** — raggruppati per operatore
+6. **Le mie checklist** — checklist con item assegnati all'utente corrente
+7. **I miei LOG** — solo le voci dell'utente corrente
+
+## Deep-link
+
+- `?commessa=<codice>` → imposta `viewMode='commessa'` e preseleziona il gruppo
+- `?tab=checklist` → apre direttamente la tab Checklist al caricamento
+
+## Checklist — permessi
+
+| Azione | Admin (ufficio) | User (produzione) |
+|---|---|---|
+| Creare checklist | Sì | Sì |
+| Eliminare checklist | Qualsiasi | Solo proprie |
+| Aggiungere item | Sì | Sì |
+| Rimuovere item | Sì | Solo item propri non ancora checkati |
+| Checkare item | Sì | Solo item assegnati a sé |
+| Assegnare item | Sì (con select utenti) | No |
 
 ## Smart Mode
 
 Componente `SmartLogWizard` — wizard a step per guidare l'inserimento di nuove voci.
+
+`SmartChecklistForm` — wizard a 2 step per creare checklist:
+- Step 1: Nome + Commessa
+- Step 2: Elementi (input + assign per admin, lista preview)
+
+Il FAB nella tab Checklist apre `SmartChecklistForm` se smart mode ON, `ChecklistForm` se OFF.
+`ChecklistForm` (standard) include anch'esso la sezione preItems.
 
 ## OneSignal (notifiche push)
 
