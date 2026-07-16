@@ -718,6 +718,21 @@ function ChecklistDetail({ cl, users, currentUser, isUfficio, onBack, onDelete, 
   );
 }
 
+// ── ConfirmDialog ─────────────────────────────────────────────────────────────
+function ConfirmDialog({ msg, onYes, onNo }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5">
+        <p className="text-sm text-gray-700 whitespace-pre-line mb-5">{msg}</p>
+        <div className="flex gap-2 justify-end">
+          <Btn onClick={onNo}>Annulla</Btn>
+          <Btn color="red" onClick={onYes}>Conferma</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── SettingsModal ─────────────────────────────────────────────────────────────
 function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true }) {
   const [rows, setRows]             = useState(users.map(u => ({ ...u })));
@@ -725,6 +740,8 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
   const [showPwd, setShowPwd]       = useState(false);
   const [newUser, setNewUser]       = useState({ username: '', password: '', level: 'user' });
   const [adding, setAdding]         = useState(false);
+  const [deleteConfirmIdx, setDeleteConfirmIdx] = useState(null);
+  const [selfDeleteError, setSelfDeleteError]   = useState(false);
 
   const set = (i, k, v) => setRows(r => r.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
 
@@ -744,9 +761,13 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
   };
 
   const handleDelete = (i) => {
-    if (rows[i].username === currentUsername) { alert('Non puoi eliminare te stesso.'); return; }
-    if (!confirm(`Eliminare ${rows[i].username}? Verrà rimosso da TUTTE le app (anagrafica condivisa).`)) return;
+    if (rows[i].username === currentUsername) { setSelfDeleteError(true); return; }
+    setDeleteConfirmIdx(i);
+  };
+
+  const confirmDelete = (i) => {
     const updated = rows.filter((_, idx) => idx !== i);
+    setDeleteConfirmIdx(null);
     setRows(updated); onSave(updated);
   };
 
@@ -853,6 +874,25 @@ function SettingsModal({ users, onSave, onClose, currentUsername, isAdmin = true
             </div>
           ))}
         </div>
+        {selfDeleteError && (
+          <div className="px-5 pb-3 flex items-center justify-between border-t pt-3">
+            <p className="text-red-500 text-xs">Non puoi eliminare te stesso.</p>
+            <button className="text-gray-400 hover:text-gray-600 text-sm" onClick={() => setSelfDeleteError(false)}>✕</button>
+          </div>
+        )}
+        {deleteConfirmIdx !== null && (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5">
+              <p className="text-sm text-gray-700 mb-5">
+                Eliminare <b>{rows[deleteConfirmIdx]?.username}</b>?<br/>Verrà rimosso da TUTTE le app (anagrafica condivisa).
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Btn onClick={() => setDeleteConfirmIdx(null)}>Annulla</Btn>
+                <Btn color="red" onClick={() => confirmDelete(deleteConfirmIdx)}>Elimina</Btn>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -885,6 +925,7 @@ export default function App() {
   const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [showChecklistForm, setShowChecklistForm] = useState(false);
   const [showSmartChecklist, setShowSmartChecklist] = useState(false);
+  const [confirmDialog, setConfirmDialog]         = useState(null);
 
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
@@ -978,9 +1019,8 @@ export default function App() {
     await handleSaveLogs([withOp, ...logs]);
   };
 
-  const handleDeleteLog = async (id) => {
-    if (!confirm('Eliminare questo log?')) return;
-    await handleSaveLogs(logs.filter(e => e.id !== id));
+  const handleDeleteLog = (id) => {
+    setConfirmDialog({ msg: 'Eliminare questo log?', onYes: async () => { await handleSaveLogs(logs.filter(e => e.id !== id)); } });
   };
 
   const handleEditLog = async (updatedEntry) => {
@@ -1031,11 +1071,14 @@ export default function App() {
     });
   };
 
-  const handleDeleteChecklist = async (id) => {
-    if (!confirm('Eliminare questa checklist e tutti i suoi elementi?')) return false;
-    await handleSaveChecklists(checklists.filter(c => c.id !== id));
-    if (selectedChecklist === id) setSelectedChecklist(null);
-    return true;
+  const handleDeleteChecklist = (id) => {
+    setConfirmDialog({
+      msg: 'Eliminare questa checklist e tutti i suoi elementi?',
+      onYes: async () => {
+        await handleSaveChecklists(checklists.filter(c => c.id !== id));
+        if (selectedChecklist === id) setSelectedChecklist(null);
+      },
+    });
   };
 
   const handleAddChecklistItem = async (checklistId, testo, assignedTo) => {
@@ -1655,6 +1698,13 @@ export default function App() {
       {showWizard   && <SmartLogWizard currentUsername={user.username} isUfficio={isUfficio} ddpCommesse={ddpCommesse} onSave={handleAddLog} onClose={() => setShowWizard(false)} />}
       {showSettings && <SettingsModal users={users} onSave={handleSaveUsers} onClose={() => setShowSettings(false)} currentUsername={user.username} isAdmin={isUfficio} />}
       {selectedLog  && <LogDetailModal entry={selectedLog} onClose={() => setSelectedLog(null)} />}
+      {confirmDialog && (
+        <ConfirmDialog
+          msg={confirmDialog.msg}
+          onYes={() => { confirmDialog.onYes(); setConfirmDialog(null); }}
+          onNo={() => setConfirmDialog(null)}
+        />
+      )}
     </div>
   );
 }
