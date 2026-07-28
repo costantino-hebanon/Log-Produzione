@@ -2,7 +2,7 @@
 
 ## Stack
 
-- React 18 + Vite 5, Tailwind CSS via CDN
+- React 19.2 + Vite 8, Tailwind CSS via CDN
 - Supabase (`@supabase/supabase-js` v2) — progetto unificato `ckbolwvwnsabsblzcbet` — **password dashboard:** `Basile@1830!`
 - Deploy: Vercel, push su `main` → deploy automatico
 - URL: https://log-produzione.vercel.app
@@ -171,6 +171,14 @@ Il FAB nella tab Checklist apre `SmartChecklistForm` se smart mode ON, `Checklis
     `selfDeleteError` state per errore auto-eliminazione
   - App: `confirmDialog` state `{ msg, onYes }` per `handleDeleteLog` e `handleDeleteChecklist`
 - **Documentazione corretta**: sessione in `localStorage` (non `sessionStorage` come scritto erroneamente in precedenza).
+
+## Note tecniche (2026-07-28)
+
+- **React 19.2 + Vite 8**: aggiornati da React 18.3 + Vite 5. `@vitejs/plugin-react` → `^6.0.2`. `vite.config.js` aggiunto `build: { sourcemap: false, chunkSizeWarningLimit: 600 }`.
+- **Sort "I miei LOG"**: la condizione `(viewMode === 'cronologico' || viewMode === 'miei')` in `sortedKeys` ora applica `sortDir` correttamente anche nella vista "I miei LOG" (in precedenza sortava solo "Cronologico").
+- **Indicatori checklist non assegnati**: in `renderChecklistList()`, le card con item non completati senza `assignedTo` mostrano bordo arancione e badge "⚠ Non assegnati". Il modello dati non prevede `scadenza` sugli item, quindi l'indicatore scadenza non è implementato.
+- **Export CSV checklist**: funzione `exportChecklistCSV()` — genera CSV UTF-8 con BOM (compatibile Excel), colonne: Nome checklist / Item / Assegnato / Completato / Scadenza (vuota). Bottone "📥 Esporta CSV" visibile in cima alla lista checklist.
+- **Notifiche push (OneSignal)**: funzionalità non implementata in questa sessione — da sviluppare in futuro.
 
 ## Comandi
 

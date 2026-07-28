@@ -1152,6 +1152,42 @@ export default function App() {
     await handleSaveChecklists(updated);
   };
 
+  // ── Export Checklist CSV ──
+  // Nota: il modello dati degli item non prevede un campo scadenza/data_scadenza,
+  // quindi la colonna Scadenza viene esportata vuota.
+  const exportChecklistCSV = () => {
+    const BOM = '﻿';
+    const header = ['Nome checklist', 'Item', 'Assegnato', 'Completato', 'Scadenza'];
+    const rows = [header];
+    checklists.forEach(cl => {
+      if (cl.items.length === 0) {
+        rows.push([cl.nome, '', '', '', '']);
+      } else {
+        cl.items.forEach(item => {
+          rows.push([
+            cl.nome,
+            item.testo,
+            item.assignedTo || '',
+            item.checked ? 'Sì' : 'No',
+            '', // campo scadenza non presente nel modello dati
+          ]);
+        });
+      }
+    });
+    const csv = BOM + rows.map(r =>
+      r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.download = `checklist_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const changeView = (key) => { setViewMode(key); setSelectedGroup(null); setSelectedChecklist(null); };
 
   const isUfficio = user?.level === 'admin'; // normalizeLevel converte 'ufficio' → 'admin'
@@ -1176,7 +1212,7 @@ export default function App() {
 
   // ── Groups ──
   const groups         = groupLogs(filtered, viewMode === 'cronologico' ? 'data' : viewMode);
-  const sortedKeys     = viewMode === 'cronologico'
+  const sortedKeys     = (viewMode === 'cronologico' || viewMode === 'miei')
     ? Object.keys(groups).sort((a, b) => sortDir === 'desc' ? b.localeCompare(a) : a.localeCompare(b))
     : sortGroupKeys(Object.keys(groups), viewMode);
   const groupEntries   = selectedGroup ? (groups[selectedGroup] || []) : [];
@@ -1459,58 +1495,77 @@ export default function App() {
     }
 
     return (
-      <div className="space-y-4">
-        {keys.map(key => (
-          <div key={key}>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{key}</p>
-            <div className="space-y-2">
-              {byCommessa[key].map(cl => {
-                const total = cl.items.length;
-                const done  = cl.items.filter(it => it.checked).length;
-                const myPending = cl.items.filter(it => it.assignedTo === user.username && !it.checked).length;
-                const canManage = isUfficio || cl.createdBy === user.username;
-                return (
-                  <div key={cl.id}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all"
-                    onClick={() => setSelectedChecklist(cl.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-gray-800 text-base flex-1 min-w-0 truncate">{cl.nome}</p>
-                          {total > 0 && (
-                            <span className={`text-xs font-semibold rounded-full px-2 py-0.5 flex-shrink-0 ${done === total ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                              {done}/{total}
-                            </span>
-                          )}
-                        </div>
-                        {total > 0 && (
-                          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1.5">
-                            <div className={`h-1.5 rounded-full transition-all ${done === total ? 'bg-green-500' : 'bg-blue-500'}`}
-                              style={{ width: `${(done / total) * 100}%` }} />
+      <div>
+        {/* Toolbar checklist: esporta CSV */}
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={exportChecklistCSV}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 transition-colors"
+          >
+            📥 Esporta CSV
+          </button>
+        </div>
+        <div className="space-y-4">
+          {keys.map(key => (
+            <div key={key}>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{key}</p>
+              <div className="space-y-2">
+                {byCommessa[key].map(cl => {
+                  const total = cl.items.length;
+                  const done  = cl.items.filter(it => it.checked).length;
+                  const myPending = cl.items.filter(it => it.assignedTo === user.username && !it.checked).length;
+                  const canManage = isUfficio || cl.createdBy === user.username;
+                  // UX 2: indicatori visivi
+                  // Nota: nessun campo scadenza/data_scadenza nel modello dati, indicatore scadenza non disponibile
+                  const hasUnassigned = cl.items.some(it => !it.checked && !it.assignedTo);
+                  return (
+                    <div key={cl.id}
+                      className={`bg-white rounded-2xl border shadow-sm p-4 hover:shadow-md cursor-pointer transition-all ${
+                        hasUnassigned ? 'border-orange-300 hover:border-orange-400' : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                      onClick={() => setSelectedChecklist(cl.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-gray-800 text-base flex-1 min-w-0 truncate">{cl.nome}</p>
+                            {total > 0 && (
+                              <span className={`text-xs font-semibold rounded-full px-2 py-0.5 flex-shrink-0 ${done === total ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {done}/{total}
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs text-gray-400">da {cl.createdBy} · {new Date(cl.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</p>
-                          {myPending > 0 && (
-                            <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">{myPending} miei in sospeso</span>
+                          {total > 0 && (
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1.5">
+                              <div className={`h-1.5 rounded-full transition-all ${done === total ? 'bg-green-500' : 'bg-blue-500'}`}
+                                style={{ width: `${(done / total) * 100}%` }} />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs text-gray-400">da {cl.createdBy} · {new Date(cl.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</p>
+                            {myPending > 0 && (
+                              <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">{myPending} miei in sospeso</span>
+                            )}
+                            {hasUnassigned && (
+                              <span className="text-xs bg-orange-100 text-orange-700 rounded-full px-2 py-0.5 font-medium">⚠ Non assegnati</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-gray-300 text-xl">›</span>
+                          {canManage && (
+                            <button onClick={ev => { ev.stopPropagation(); handleDeleteChecklist(cl.id); }}
+                              className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors">×</button>
                           )}
                         </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="text-gray-300 text-xl">›</span>
-                        {canManage && (
-                          <button onClick={ev => { ev.stopPropagation(); handleDeleteChecklist(cl.id); }}
-                            className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center text-base transition-colors">×</button>
-                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   };
