@@ -89,7 +89,7 @@ giorno) accanto a `checkedBy`, es. `· ✓ mario · 14:32` oppure `· ✓ mario 
 ## Autenticazione
 
 - Password hashata SHA-256 lato client
-- Sessione in `sessionStorage` chiave `log_session`; `APP_KEY = 'log'`
+- Sessione in `localStorage` chiave `log_session`; `APP_KEY = 'log'`
 - Slice utente: `apps.log = { enabled, level, canBackup, canNotify }`
 - `normalizeLevel`: `'ufficio'` → `'admin'`; tutto il resto → `'user'`
 - `isUfficio = user?.level === 'admin'`
@@ -158,8 +158,19 @@ Il FAB nella tab Checklist apre `SmartChecklistForm` se smart mode ON, `Checklis
 
 - **KEY_REMAP**: usare sempre `dbGet('logs')` / `dbSet('logs', …)`, mai `log_logs` diretto.
 - **`updated_at` assente**: le voci log non hanno `updated_at`; sort solo su `data`.
-- **`saveUsers` distruttivo**: riscrive l'intera lista `utenti`. Utenti non inclusi
-  vengono eliminati da tutte le app — usare con cautela.
+- **`saveUsers` sicuro**: aggiorna solo la slice `apps.log` per gli utenti gestiti. Gli utenti
+  non presenti in LOG perdono solo l'accesso a quest'app; quelli di altre app rimangono intatti.
+
+## Note tecniche (2026-07-16)
+
+- **Client Supabase**: già singleton in `supabaseConfig.js` — nessuna modifica necessaria.
+- **`saveUsers`**: già corretto — aggiorna solo la slice `apps.log`, non tocca gli utenti di altre app.
+- **Dialogs**: tutti i `window.confirm` / `window.alert` sostituiti con dialog di stato React:
+  - `ConfirmDialog` — componente riusabile (overlay fisso) usato a livello App
+  - `SettingsModal`: `deleteConfirmIdx` state + overlay inline per eliminazione utente;
+    `selfDeleteError` state per errore auto-eliminazione
+  - App: `confirmDialog` state `{ msg, onYes }` per `handleDeleteLog` e `handleDeleteChecklist`
+- **Documentazione corretta**: sessione in `localStorage` (non `sessionStorage` come scritto erroneamente in precedenza).
 
 ## Comandi
 

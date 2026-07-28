@@ -16,7 +16,7 @@ const APP = 'log';
 const KEY_REMAP = { logs: 'log_logs' };
 async function dbGet(key) {
   const real = KEY_REMAP[key] || key;
-  const { data } = await supabase.from('app_data').select('value').eq('key', real).single();
+  const { data } = await supabase.from('app_data').select('value').eq('key', real).maybeSingle();
   return data?.value ?? null;
 }
 async function dbSet(key, value) {
@@ -131,21 +131,21 @@ function isBackupDue() {
   return lastTs < checkpoint.getTime();
 }
 
-function saveBackupToHistory(logs) {
+function saveBackupToHistory(logs, checklists) {
   try {
     const history = JSON.parse(localStorage.getItem(BACKUP_HISTORY_KEY) || '[]');
-    history.unshift({ ts: Date.now(), logs });
+    history.unshift({ ts: Date.now(), logs, checklists });
     localStorage.setItem(BACKUP_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_BACKUPS)));
     localStorage.setItem(BACKUP_LAST_TS_KEY, Date.now().toString());
   } catch (e) { console.error('Backup fallito:', e); }
 }
 
-function downloadBackupFile(logs, ts = Date.now()) {
+function downloadBackupFile(logs, checklists, ts = Date.now()) {
   const d = new Date(ts);
   const pad = n => String(n).padStart(2, '0');
   const stamp = `${d.toISOString().slice(0, 10)}_${pad(d.getHours())}${pad(d.getMinutes())}`;
   const blob = new Blob(
-    [JSON.stringify({ logs, exportedAt: d.toISOString() }, null, 2)],
+    [JSON.stringify({ logs, checklists, exportedAt: d.toISOString() }, null, 2)],
     { type: 'application/json' }
   );
   const url = URL.createObjectURL(blob);
@@ -971,7 +971,7 @@ export default function App() {
     const fullUser = users.find(u => u.username === user.username);
     if (!fullUser?.canBackup) return;
     if (!isBackupDue()) return;
-    saveBackupToHistory(logs);
+    saveBackupToHistory(logs, checklists);
     setBackupBanner(true);
   }, [loading]);
 
@@ -1606,7 +1606,7 @@ export default function App() {
       {backupBanner && (
         <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-3 flex-wrap">
           <span className="text-blue-700 text-sm flex-1">💾 <b>Backup delle 08:00</b> salvato localmente — vuoi scaricare anche il file?</span>
-          <button onClick={() => { downloadBackupFile(logs); setBackupBanner(false); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Scarica</button>
+          <button onClick={() => { downloadBackupFile(logs, checklists); setBackupBanner(false); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Scarica</button>
           <button onClick={() => setBackupBanner(false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Ignora</button>
         </div>
       )}
