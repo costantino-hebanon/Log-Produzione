@@ -67,13 +67,18 @@ export default function SmartLogWizard({ onSave, onClose, currentUsername, isUff
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-md flex flex-col max-h-[92vh]">
 
+        {/* Drag handle — visibile su mobile come indicatore bottom sheet */}
+        <div className="flex justify-center pt-3 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+        <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 flex-shrink-0">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
           <span className="text-sm font-medium text-gray-500">
             {phase === 'tipo' ? 'Scegli tipo' : `Passo ${phase + 2} di ${total}`}
           </span>
-          <div className="w-10" />
+          <div className="w-11" />
         </div>
 
         {/* Progress bar */}
@@ -84,7 +89,7 @@ export default function SmartLogWizard({ onSave, onClose, currentUsername, isUff
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto px-5 pb-4">
+        <div className="flex-1 overflow-y-auto px-5 pb-4" style={{ overscrollBehavior: 'contain' }}>
 
           {/* Step 0 — tipo */}
           {phase === 'tipo' && (
@@ -168,7 +173,7 @@ export default function SmartLogWizard({ onSave, onClose, currentUsername, isUff
 
         {/* Footer */}
         {phase !== 'tipo' && (
-          <div className="px-5 pb-5 pt-3 flex gap-2 flex-shrink-0 border-t bg-gray-50 rounded-b-3xl">
+          <div className="px-5 pt-3 flex gap-2 flex-shrink-0 border-t bg-gray-50 rounded-b-3xl" style={{ paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))' }}>
             <div className="flex-1">
               <button onClick={() => setPhase(p => p === 0 ? 'tipo' : p - 1)}
                 className="w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-100 transition-colors"

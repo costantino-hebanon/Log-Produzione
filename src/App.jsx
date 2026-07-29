@@ -261,12 +261,16 @@ function LogDetailModal({ entry, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-lg flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b flex-shrink-0">
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-4 border-b flex-shrink-0">
           <button onClick={onClose} className="text-blue-600 font-semibold text-sm flex items-center gap-1 hover:text-blue-700">← Indietro</button>
           <span className={`text-xs font-semibold rounded-full px-3 py-1 ${t.badge}`}>{t.icon} {t.label}</span>
           <div className="w-16" />
         </div>
-        <div className="flex-1 overflow-auto px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4" style={{ overscrollBehavior: 'contain', paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))' }}>
           <p className="text-2xl font-bold text-gray-800 leading-snug">{entry.titolo}</p>
           {entry.commessa && (
             <span className="inline-block text-sm bg-gray-100 text-gray-600 rounded-full px-3 py-1">{entry.commessa}</span>
@@ -389,11 +393,15 @@ function ChecklistForm({ onSave, onClose, ddpCommesse = [], users = [], isUffici
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white w-full rounded-t-3xl sm:rounded-2xl shadow-2xl sm:max-w-md flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b flex-shrink-0">
-          <h2 className="text-lg font-bold text-gray-800">☑️ Nuova checklist</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
         </div>
-        <div className="flex-1 overflow-auto px-5 py-4 space-y-4">
+        <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-4 border-b flex-shrink-0">
+          <h2 className="text-lg font-bold text-gray-800">☑️ Nuova checklist</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ overscrollBehavior: 'contain' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Nome checklist *</label>
             <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Es. Verifica pre-consegna…"
@@ -441,7 +449,7 @@ function ChecklistForm({ onSave, onClose, ddpCommesse = [], users = [], isUffici
             )}
           </div>
         </div>
-        <div className="px-5 pb-5 flex justify-end gap-2 flex-shrink-0 border-t pt-4">
+        <div className="px-5 pt-4 flex justify-end gap-2 flex-shrink-0 border-t" style={{ paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))' }}>
           <Btn onClick={onClose}>Annulla</Btn>
           <Btn color="blue" onClick={() => { onSave(nome.trim(), commessa.trim(), items); onClose(); }} disabled={!nome.trim()}>
             ☑️ Crea{items.length > 0 ? ` (${items.length})` : ''}
@@ -486,8 +494,13 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-lg flex flex-col max-h-[92vh]">
 
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="px-5 pt-5 pb-4 flex-shrink-0">
+        <div className="px-5 pt-4 sm:pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">⚡</span>
@@ -496,7 +509,7 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
                 <p className="text-xs text-amber-500 font-semibold mt-0.5">Smart mode</p>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-xl">×</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100 text-xl">×</button>
           </div>
           {/* Step indicator */}
           <div className="flex items-center gap-2">
@@ -599,7 +612,7 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
 
         {/* Footer */}
         <div className="h-px bg-gray-100 flex-shrink-0" />
-        <div className="px-5 py-4 flex justify-between items-center flex-shrink-0">
+        <div className="px-5 flex justify-between items-center flex-shrink-0" style={{ paddingTop: '16px', paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom) + 8px))' }}>
           <Btn onClick={step === 1 ? onClose : () => setStep(1)}>{step === 1 ? 'Annulla' : '← Indietro'}</Btn>
           {step === 1
             ? <Btn color="amber" onClick={goToStep2} disabled={!nome.trim()}>Avanti →</Btn>
