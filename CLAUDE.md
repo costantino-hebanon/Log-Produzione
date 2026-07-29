@@ -188,6 +188,14 @@ npm run build    # build produzione
 npm run preview  # anteprima build
 ```
 
+## Note tecniche (2026-07-29 — mobile UX)
+
+- **`viewport-fit=cover`** + iOS zoom prevention CSS in `index.html`.
+- **`SmartLogWizard`**: drag handle pill `.sm:hidden`; close button `w-11 h-11` (44px, era `w-10 h-10`); content `overscrollBehavior: 'contain'`; footer `paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))'`.
+- **`LogDetailModal`** (in `App.jsx`): drag handle; header `pt-4 sm:pt-5`; content overscroll + `paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))'`.
+- **`ChecklistForm`** (modale standard): drag handle; close button `w-11 h-11` (44px, era `w-9 h-9`); content overscroll.
+- **`SmartChecklistForm`**: drag handle; close button `w-11 h-11` (44px, era `w-8 h-8` = 32px!); footer safe area bottom.
+
 ## Git — workflow e push
 
 **Identità**: `user.email = costantino@hebanon.com` · `user.name = costantino-hebanon`  
