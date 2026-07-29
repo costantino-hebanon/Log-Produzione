@@ -187,3 +187,25 @@ npm run dev      # sviluppo locale
 npm run build    # build produzione
 npm run preview  # anteprima build
 ```
+
+## Git — workflow e push
+
+**Identità**: `user.email = costantino@hebanon.com` · `user.name = costantino-hebanon`  
+**Remote**: `https://costantino-hebanon@github.com/costantino-hebanon/Log-Produzione`
+
+Ogni app M.E.S. ha il proprio repository GitHub separato. Il push normale funziona senza problemi.
+
+```bash
+# Configura identità (una sola volta per repo locale)
+git config user.email "costantino@hebanon.com"
+git config user.name "costantino-hebanon"
+
+# Staging e commit
+git add <file>
+git commit -m "tipo(app): descrizione"
+
+# Push
+git push origin main
+```
+
+> Push su `main` → deploy automatico Vercel.
