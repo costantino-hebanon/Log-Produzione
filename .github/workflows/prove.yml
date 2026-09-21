@@ -1,0 +1,85 @@
+# Le prove a ogni push, prima che ci arrivi Vercel.
+#
+# Vercel compila comunque a ogni push, ma se la build fallisce lo scopre chi
+# apre l'app: il deploy precedente resta in piedi e in superficie non cambia
+# niente finche' qualcuno non si accorge che la modifica non c'e'. Qui invece
+# il push diventa rosso su GitHub nel giro di un minuto.
+#
+# `npm ci` e non `npm install`: usa il package-lock e installa esattamente le
+# versioni che girano in locale. Con `install` la CI puo' tirare su una
+# versione diversa e passare (o fallire) per un motivo che sul portatile non
+# esiste.
+name: Prove
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  # A mano, dalla scheda Actions: serve quando si vuole ricontrollare senza
+  # avere niente da pushare.
+  workflow_dispatch:
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      # La build prima delle prove: se non compila, le prove direbbero cose
+      # su un codice che non esiste.
+      - name: Compila
+        run: npm run build
+
+      - name: Prove
+        run: npm test
+
+      - name: Riporta l'esito
+        # Questo passo **riporta**, non produce: se non riesce a scrivere la
+        # riga deve dirlo, non far diventare rosso un giro in cui le prove
+        # sono passate. Un rosso qui farebbe cercare un guasto dove non c'e'.
+        if: always()
+        continue-on-error: true
+        env:
+        # URL e chiave **anon** in chiaro, come in keepalive-supabase.yml.
+        # Non e' un segreto: viaggia dentro il bundle che ogni browser scarica
+        # dalle app. Tenerla come segreto di repository costava due
+        # impostazioni per ognuno dei sette repo, e quando mancavano il passo
+        # usciva verde senza scrivere niente — un errore che non urla.
+        # (La chiave di servizio, quella che scavalca le RLS, qui non entra.)
+          URL: https://ckbolwvwnsabsblzcbet.supabase.co
+          KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYm9sd3Z3bnNhYnNibHpjYmV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTc5NDAsImV4cCI6MjA5NzI3Mzk0MH0.hR9tg_UjO5Dt0RzdJihXJWPaKJisVXk9ZZrDSAZ9KLQ
+          ESITO: ${{ job.status }}
+        run: |
+          # I segreti incollati a mano si portano dietro a-capo e spazi: come
+          # intestazione HTTP diventano malformati e curl si rifiuta di
+          # spedirli, facendo fallire il passo per un motivo invisibile.
+          URL=$(printf '%s' "$URL" | tr -d '[:space:]')
+          KEY=$(printf '%s' "$KEY" | tr -d '[:space:]')
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "Segreti Supabase non impostati: l'esito non viene riportato."
+            echo "Settings -> Secrets and variables -> Actions."
+            exit 0
+          fi
+          echo "URL lungo ${#URL} caratteri, chiave lunga ${#KEY}"
+          VALORE=$(printf '{"app":"%s","commit":"%s","ramo":"%s","esito":"%s","quando":"%s","giro":"%s"}' \
+            "log" "$GITHUB_SHA" "$GITHUB_REF_NAME" "$ESITO" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          # La risposta si stampa: e' il pezzo che dice perche', e buttarlo
+          # via era il motivo per cui questo errore non si capiva.
+          RISPOSTA=$(curl -sS -X POST "$URL/rest/v1/app_data?on_conflict=key" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{\"key\":\"ci_log\",\"value\":$VALORE}" \
+            -w $'\n%{http_code}' 2>&1) || true
+          echo "Supabase ha risposto:"
+          echo "$RISPOSTA"

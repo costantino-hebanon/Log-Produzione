@@ -1,4 +1,9 @@
 import { useState, useEffect } from 'react';
+import { TIPI, TIPO_MAP, TIPO_ORDER, CHECKLIST_TYPE, EMPTY_COMMESSA,
+         getTipoMeta, dataLeggibile as formatDate, dataBreve as formatDateShort,
+         arcoDate as getDateRange, tipiPresenti as getUniqueTypes,
+         autoriPresenti as getUniqueAuthors, raggruppa as groupLogs,
+         ordinaChiavi as sortGroupKeys } from './utils/registro';
 import { supabase } from './supabaseConfig';
 import { loadDDPCommesse } from './supabaseDDP';
 import SmartLogWizard from './components/SmartLogWizard';
@@ -89,21 +94,9 @@ async function saveUsers(logUsers) {
 }
 
 // ── Costanti ──────────────────────────────────────────────────────────────────
-const TIPI = [
-  { value: 'cambio_progetto', label: 'Cambio progetto', icon: '🔄', badge: 'bg-blue-100 text-blue-700' },
-  { value: 'variazione',      label: 'Variazione',      icon: '⚠️',  badge: 'bg-orange-100 text-orange-700' },
-  { value: 'annotazione',     label: 'Annotazione',     icon: '📝', badge: 'bg-gray-100 text-gray-700' },
-  { value: 'osservazione',    label: 'Osservazione',    icon: '👁️',  badge: 'bg-purple-100 text-purple-700' },
-  { value: 'decisione',       label: 'Decisione',       icon: '✅', badge: 'bg-green-100 text-green-700' },
-];
-const TIPO_MAP   = Object.fromEntries(TIPI.map(t => [t.value, t]));
-const TIPO_ORDER = TIPI.map(t => t.value);
-
-const CHECKLIST_TYPE = { value: 'checklist', label: 'Checklist', icon: '☑️', badge: 'bg-blue-100 text-blue-700' };
-function getTipoMeta(tipo) {
-  if (tipo === 'checklist') return CHECKLIST_TYPE;
-  return TIPO_MAP[tipo] || { label: tipo || 'annotazione', icon: '📝', badge: 'bg-gray-100 text-gray-700' };
-}
+// I tipi, il raggruppamento e le date stanno in utils/registro.js, coperti da
+// prove. Il raggruppamento non e' cosmetica: e' il modo in cui si ritrova una
+// decisione presa tre mesi fa, e una voce che sparisce non si nota.
 
 const VIEW_TABS = [
   { key: 'cronologico',    label: 'Cronologico',      icon: '📅' },
@@ -115,7 +108,6 @@ const VIEW_TABS = [
   { key: 'miei',           label: 'I miei LOG',       icon: '🙋' },
 ];
 
-const EMPTY_COMMESSA = '(Senza commessa)';
 
 // ── Backup helpers ────────────────────────────────────────────────────────────
 const BACKUP_HISTORY_KEY = 'log_backup_history';
@@ -157,68 +149,6 @@ function downloadBackupFile(logs, checklists, ts = Date.now()) {
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const today     = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  if (dateStr === today)     return 'Oggi';
-  if (dateStr === yesterday) return 'Ieri';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function formatDateShort(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
-}
-
-function getDateRange(entries) {
-  const dates = entries.map(e => e.data).filter(Boolean).sort();
-  if (!dates.length) return '';
-  if (dates.length === 1 || dates[0] === dates[dates.length - 1]) return formatDateShort(dates[0]);
-  return `${formatDateShort(dates[0])} → ${formatDateShort(dates[dates.length - 1])}`;
-}
-
-function getUniqueTypes(entries) {
-  const set = new Set(entries.map(e => e.tipo).filter(Boolean));
-  return TIPO_ORDER.filter(t => set.has(t)).map(t => TIPO_MAP[t]);
-}
-
-function getUniqueAuthors(entries) {
-  return [...new Set(entries.map(e => e.operatore).filter(Boolean))];
-}
-
-// ── Grouping ──────────────────────────────────────────────────────────────────
-function groupLogs(logs, mode) {
-  const groups = {};
-  logs.forEach(e => {
-    let key;
-    if      (mode === 'commessa') key = e.commessa?.trim() || EMPTY_COMMESSA;
-    else if (mode === 'tipo')     key = e.tipo || 'annotazione';
-    else if (mode === 'autore')   key = e.operatore || 'Sconosciuto';
-    else                          key = e.data || 'Senza data';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(e);
-  });
-  return groups;
-}
-
-function sortGroupKeys(keys, mode) {
-  if (mode === 'tipo') {
-    return [...keys].sort((a, b) => {
-      const ai = TIPO_ORDER.indexOf(a), bi = TIPO_ORDER.indexOf(b);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-  }
-  if (mode === 'commessa') {
-    return [...keys].sort((a, b) => {
-      if (a === EMPTY_COMMESSA) return 1;
-      if (b === EMPTY_COMMESSA) return -1;
-      return a.localeCompare(b, 'it');
-    });
-  }
-  return [...keys].sort((a, b) => a.localeCompare(b, 'it'));
-}
-
 // ── Btn ───────────────────────────────────────────────────────────────────────
 function Btn({ children, onClick, color = 'gray', small, disabled, className = '' }) {
   const C = {
