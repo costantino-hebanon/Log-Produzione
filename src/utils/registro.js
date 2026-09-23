@@ -77,7 +77,7 @@ export function dataBreve(dataStr) {
 
 /** L'arco di tempo coperto da un gruppo di voci. */
 export function arcoDate(voci) {
-  const date = (voci || []).map(e => e.data).filter(Boolean).sort();
+  const date = (Array.isArray(voci) ? voci : []).map(e => e?.data).filter(Boolean).map(String).sort();
   if (!date.length) return '';
   if (date.length === 1 || date[0] === date[date.length - 1]) return dataBreve(date[0]);
   return `${dataBreve(date[0])} → ${dataBreve(date[date.length - 1])}`;
@@ -85,13 +85,13 @@ export function arcoDate(voci) {
 
 /** I tipi presenti, nell'ordine dichiarato. */
 export function tipiPresenti(voci) {
-  const set = new Set((voci || []).map(e => e.tipo).filter(Boolean));
+  const set = new Set((Array.isArray(voci) ? voci : []).map(e => e?.tipo).filter(Boolean));
   return TIPO_ORDER.filter(t => set.has(t)).map(t => TIPO_MAP[t]);
 }
 
 /** Gli autori, una volta ciascuno. */
 export function autoriPresenti(voci) {
-  return [...new Set((voci || []).map(e => e.operatore).filter(Boolean))];
+  return [...new Set((Array.isArray(voci) ? voci : []).map(e => e?.operatore).filter(Boolean))];
 }
 
 /**
@@ -103,12 +103,14 @@ export function autoriPresenti(voci) {
  */
 export function raggruppa(voci, modo) {
   const gruppi = {};
-  for (const e of voci || []) {
+  const testo = (v) => (typeof v === 'string' ? v : v == null ? '' : String(v)).trim();
+  for (const e of (Array.isArray(voci) ? voci : [])) {
+    if (!e || typeof e !== 'object') continue; // una voce che non e' un oggetto si salta
     let chiave;
-    if (modo === 'commessa') chiave = e.commessa?.trim() || EMPTY_COMMESSA;
-    else if (modo === 'tipo') chiave = e.tipo || 'annotazione';
-    else if (modo === 'autore') chiave = e.operatore || 'Sconosciuto';
-    else chiave = e.data || 'Senza data';
+    if (modo === 'commessa') chiave = testo(e.commessa) || EMPTY_COMMESSA;
+    else if (modo === 'tipo') chiave = testo(e.tipo) || 'annotazione';
+    else if (modo === 'autore') chiave = testo(e.operatore) || 'Sconosciuto';
+    else chiave = testo(e.data) || 'Senza data';
     (gruppi[chiave] ||= []).push(e);
   }
   return gruppi;
@@ -116,9 +118,10 @@ export function raggruppa(voci, modo) {
 
 /** Le chiavi dei gruppi nell'ordine giusto per quel modo. */
 export function ordinaChiavi(chiavi, modo) {
+  const lista = (Array.isArray(chiavi) ? chiavi : []).map(k => k == null ? '' : String(k));
   if (modo === 'tipo') {
     // Ordine di gravita', non alfabetico. Quelli sconosciuti in fondo.
-    return [...chiavi].sort((a, b) => {
+    return [...lista].sort((a, b) => {
       const ai = TIPO_ORDER.indexOf(a), bi = TIPO_ORDER.indexOf(b);
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     });
@@ -126,11 +129,11 @@ export function ordinaChiavi(chiavi, modo) {
   if (modo === 'commessa') {
     // «(Senza commessa)» in fondo: l'alfabeto lo metterebbe in cima per la
     // parentesi, spingendo giu' tutto il lavoro vero.
-    return [...chiavi].sort((a, b) => {
+    return [...lista].sort((a, b) => {
       if (a === EMPTY_COMMESSA) return 1;
       if (b === EMPTY_COMMESSA) return -1;
       return a.localeCompare(b, 'it');
     });
   }
-  return [...chiavi].sort((a, b) => a.localeCompare(b, 'it'));
+  return [...lista].sort((a, b) => a.localeCompare(b, 'it'));
 }
