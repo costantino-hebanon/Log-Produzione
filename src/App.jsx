@@ -5,7 +5,9 @@ import { TIPI, TIPO_MAP, TIPO_ORDER, CHECKLIST_TYPE, EMPTY_COMMESSA,
          autoriPresenti as getUniqueAuthors, raggruppa as groupLogs,
          ordinaChiavi as sortGroupKeys } from './utils/registro';
 import { supabase } from './supabaseConfig';
-import { loadDDPCommesse } from './supabaseDDP';
+import { loadDDPCommesse, loadDDPCommesseDettaglio } from './supabaseDDP';
+import QrScannerModal from './QrScannerModal';
+import { leggiPayloadCommessa } from './utils/qrCommessa';
 import SmartLogWizard from './components/SmartLogWizard';
 
 // ── SHA-256 ───────────────────────────────────────────────────────────────────
@@ -167,20 +169,36 @@ function Btn({ children, onClick, color = 'gray', small, disabled, className = '
 }
 
 // ── CommessaField ─────────────────────────────────────────────────────────────
-function CommessaField({ value, onChange, commesse }) {
+function CommessaField({ value, onChange, commesse, cidPerNome = {} }) {
+  const [scanning, setScanning] = useState(false);
+  const [avviso, setAvviso] = useState('');
+  const daScansione = async (testo) => {
+    setScanning(false);
+    const id = leggiPayloadCommessa(testo);
+    if (!id) { setAvviso('Questo QR non e\u0300 di una commessa Hebanon.'); return; }
+    try {
+      const { data, error } = await supabase.from('commesse').select('nome').eq('dati->>cid', id).maybeSingle();
+      if (error) throw error;
+      if (!data?.nome) { setAvviso('Commessa non trovata per questo ID.'); return; }
+      setAvviso(''); onChange(data.nome);
+    } catch (e) { setAvviso('Errore nella lettura: ' + (e.message || e)); }
+  };
   return (
     <div>
-      <input
-        type="text"
-        list="log-commesse-dl"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="— Nessuna —"
-        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white"
-      />
+      <div className="flex items-stretch gap-1">
+        <input type="text" list="log-commesse-dl" value={value}
+          onChange={e => { onChange(e.target.value); if (avviso) setAvviso(''); }}
+          placeholder="— Nessuna —"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white" />
+        <button type="button" onClick={() => { setAvviso(''); setScanning(true); }} title="Scansiona il QR della commessa"
+          className="flex-shrink-0 px-2 rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 text-base">📷</button>
+      </div>
       <datalist id="log-commesse-dl">
         {commesse.map(c => <option key={c} value={c} />)}
       </datalist>
+      {cidPerNome[value] && <p className="text-xs text-gray-400 font-mono mt-1">ID: {cidPerNome[value]}</p>}
+      {avviso && <p className="text-xs text-amber-600 mt-1">{avviso}</p>}
+      {scanning && <QrScannerModal onScan={daScansione} onClose={() => setScanning(false)} titolo="Scansiona la commessa" />}
     </div>
   );
 }
@@ -277,7 +295,7 @@ function LogEntryForm({ onSave, onClose, currentUser, ddpCommesse = [], editEntr
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Commessa <span className="font-normal text-gray-400">(opzionale)</span></label>
             {ddpCommesse.length > 0
-              ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+              ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} cidPerNome={cidPerNome} />
               : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
             }
@@ -341,7 +359,7 @@ function ChecklistForm({ onSave, onClose, ddpCommesse = [], users = [], isUffici
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Commessa <span className="font-normal text-gray-400">(opzionale)</span></label>
             {ddpCommesse.length > 0
-              ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+              ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} cidPerNome={cidPerNome} />
               : <input id="cl-commessa-std" type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
             }
@@ -474,7 +492,7 @@ function SmartChecklistForm({ onSave, onClose, users = [], isUfficio = false, dd
                 Commessa <span className="font-normal text-gray-400 normal-case">(opzionale)</span>
               </label>
               {ddpCommesse.length > 0
-                ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} />
+                ? <CommessaField value={commessa} onChange={setCommessa} commesse={ddpCommesse} cidPerNome={cidPerNome} />
                 : <input type="text" value={commessa} onChange={e => setCommessa(e.target.value)} placeholder="Es. CM-001"
                     className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 transition-colors"
                     onKeyDown={e => { if (e.key === 'Enter') goToStep2(); }} />
@@ -860,6 +878,7 @@ export default function App() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedLog, setSelectedLog]   = useState(null);
   const [ddpCommesse, setDdpCommesse]   = useState([]);
+  const [cidPerNome, setCidPerNome] = useState({});
   const [backupBanner, setBackupBanner] = useState(false);
   const [loginUser, setLoginUser]       = useState('');
   const [loginPass, setLoginPass]       = useState('');
@@ -878,7 +897,8 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [u, l, c, cl] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse(), dbGet('log_checklists')]);
+      const [u, l, c, cl, cidMap] = await Promise.all([loadUsers(), dbGet('logs'), loadDDPCommesse(), dbGet('log_checklists'), loadDDPCommesseDettaglio()]);
+      setCidPerNome(cidMap || {});
       const mappedUsers = (u || []).map(usr => ({ canBackup: false, canNotify: false, ...usr }));
       setUsers(mappedUsers);
       setLogs(l || []);

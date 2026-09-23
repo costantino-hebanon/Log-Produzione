@@ -17,3 +17,12 @@ export async function loadDDPCommesse() {
     return [];
   }
 }
+
+export async function loadDDPCommesseDettaglio() {
+  try {
+    const { data } = await supabase.from('commesse').select('nome, dati').eq('stato', 'attiva');
+    const map = {};
+    for (const c of (data || [])) { if (c.nome && c.dati?.cid) map[c.nome] = c.dati.cid; }
+    return map;
+  } catch { return {}; }
+}
