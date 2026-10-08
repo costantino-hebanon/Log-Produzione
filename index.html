@@ -26,6 +26,29 @@
     /* Previene auto-zoom iOS (Safari fa zoom se font-size < 16px su input) */
     input, textarea, select { font-size: max(16px, 1em); }
   </style>
+      <!-- Tema chiaro / scuro / automatico (Hebanon M.E.S., 2026-10-08).
+         Va prima dell'app: applica il tema prima del primo disegno (niente
+         lampo bianco). ?tema=chiaro|scuro|auto nell'indirizzo (lo passa
+         l'Hub) diventa la scelta salvata. Sorgente: Hebanon-Reference/tema/. -->
+    <script>
+      (function () {
+        var K = 'hebanon_tema', mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        try {
+          var q = new URLSearchParams(location.search).get('tema');
+          if (/^(chiaro|scuro|auto)$/.test(q || '')) localStorage.setItem(K, q);
+        } catch (e) {}
+        function applica() {
+          var t = 'chiaro';
+          try { t = localStorage.getItem(K) || 'chiaro'; } catch (e) {}
+          document.documentElement.classList.toggle('tema-scuro', t === 'scuro' || (t === 'auto' && !!(mq && mq.matches)));
+        }
+        window.hebanonTema = { applica: applica };
+        applica();
+        if (mq && mq.addEventListener) mq.addEventListener('change', applica);
+        window.addEventListener('storage', function (e) { if (e.key === K) applica(); });
+      })();
+    </script>
+    <link rel="stylesheet" href="/tema-scuro.css" />
   </head>
   <body>
     <div id="root"></div>

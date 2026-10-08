@@ -9,6 +9,7 @@ import { loadDDPCommesse, loadDDPCommesseDettaglio } from './supabaseDDP';
 import QrScannerModal from './QrScannerModal';
 import { leggiPayloadCommessa } from './utils/qrCommessa';
 import SmartLogWizard from './components/SmartLogWizard';
+import SceltaTema from './SceltaTema';
 
 // ── SHA-256 ───────────────────────────────────────────────────────────────────
 async function sha256(msg) {
@@ -1610,6 +1611,7 @@ export default function App() {
               📲 Installa app
             </button>
           )}
+          <SceltaTema />
           <button onClick={toggleSmartMode}
             className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
               smartMode ? 'bg-amber-400 border-amber-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'

@@ -217,3 +217,11 @@ git push origin main
 ```
 
 > Push su `main` → deploy automatico Vercel.
+
+## Tema chiaro / scuro / automatico (2026-10-08)
+
+Selettore ☀️/🌙/Auto (`src/SceltaTema.jsx`) nell'intestazione; script in testata
+di `index.html` e `public/tema-scuro.css` **generato**. Sorgente comune, regole e
+come rigenerare: `Hebanon-Reference/tema/README.md`. Predefinito chiaro; l'Hub
+passa la sua scelta con `?tema=`. Se in tema scuro qualcosa resta chiaro, di
+solito è un colore in `style={{…}}`: meglio una classe Tailwind.

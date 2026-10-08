@@ -1,0 +1,176 @@
+/* Tema scuro Hebanon M.E.S. — GENERATO da Hebanon-Reference/tema/genera_tema_scuro.py
+   (159 regole per le classi Tailwind usate nelle app). Non modificare a mano:
+   si rigenera. Le correzioni per una singola app vanno nel suo tema-scuro-app.css. */
+html.tema-scuro { color-scheme: dark; }
+html.tema-scuro body { background-color:#111827; color:#e5e7eb; }
+html.tema-scuro input:not([type=checkbox]):not([type=radio]):not([type=range]),
+html.tema-scuro select, html.tema-scuro textarea { background-color:#111827; color:#f3f4f6; border-color:#4b5563; }
+html.tema-scuro input:disabled, html.tema-scuro select:disabled, html.tema-scuro textarea:disabled { background-color:#1f2937; color:#9ca3af; }
+html.tema-scuro ::placeholder { color:#6b7280; }
+/* I bordi senza colore («border», «border-b») prendono il grigio chiaro
+   predefinito di Tailwind. Questa regola pesa (0,0,2): più del predefinito
+   (0,0,0), meno di qualsiasi classe di colore (0,1,0), che quindi resta. */
+:where(html.tema-scuro) body *, :where(html.tema-scuro) body *::before, :where(html.tema-scuro) body *::after { border-color:#374151; }
+html.tema-scuro table, html.tema-scuro th, html.tema-scuro td { border-color:#374151; }
+html.tema-scuro hr { border-color:#374151; }
+html.tema-scuro ::-webkit-scrollbar { background:#111827; }
+html.tema-scuro ::-webkit-scrollbar-thumb { background:#374151; border-radius:6px; }
+html.tema-scuro .bg-amber-100{background-color:rgba(245,158,11,0.18)}
+html.tema-scuro .hover\:bg-amber-100:hover{background-color:rgba(245,158,11,0.26)}
+html.tema-scuro .bg-amber-200{background-color:rgba(245,158,11,0.28)}
+html.tema-scuro .hover\:bg-amber-200:hover{background-color:rgba(245,158,11,0.36)}
+html.tema-scuro .bg-amber-50{background-color:rgba(245,158,11,0.12)}
+html.tema-scuro .active\:bg-amber-50:active{background-color:rgba(245,158,11,0.2)}
+html.tema-scuro .hover\:bg-amber-50:hover{background-color:rgba(245,158,11,0.2)}
+html.tema-scuro .bg-blue-100{background-color:rgba(59,130,246,0.18)}
+html.tema-scuro .active\:bg-blue-100:active{background-color:rgba(59,130,246,0.26)}
+html.tema-scuro .hover\:bg-blue-100:hover{background-color:rgba(59,130,246,0.26)}
+html.tema-scuro .bg-blue-200{background-color:rgba(59,130,246,0.28)}
+html.tema-scuro .hover\:bg-blue-200:hover{background-color:rgba(59,130,246,0.36)}
+html.tema-scuro .bg-blue-300{background-color:rgba(59,130,246,0.4)}
+html.tema-scuro .bg-blue-50{background-color:rgba(59,130,246,0.12)}
+html.tema-scuro .bg-blue-50\/30{background-color:rgba(59,130,246,0.12)}
+html.tema-scuro .bg-blue-50\/40{background-color:rgba(59,130,246,0.12)}
+html.tema-scuro .bg-blue-50\/60{background-color:rgba(59,130,246,0.12)}
+html.tema-scuro .active\:bg-blue-50:active{background-color:rgba(59,130,246,0.2)}
+html.tema-scuro .hover\:bg-blue-50:hover{background-color:rgba(59,130,246,0.2)}
+html.tema-scuro .hover\:bg-blue-50\/30:hover{background-color:rgba(59,130,246,0.2)}
+html.tema-scuro .bg-emerald-100{background-color:rgba(16,185,129,0.18)}
+html.tema-scuro .bg-gray-100{background-color:#111827}
+html.tema-scuro .hover\:bg-gray-100:hover{background-color:#374151}
+html.tema-scuro .bg-gray-200{background-color:#374151}
+html.tema-scuro .disabled\:bg-gray-200:disabled{background-color:#374151}
+html.tema-scuro .hover\:bg-gray-200:hover{background-color:#4b5563}
+html.tema-scuro .bg-gray-300{background-color:#4b5563}
+html.tema-scuro .active\:bg-gray-300:active{background-color:#4b5563}
+html.tema-scuro .hover\:bg-gray-300:hover{background-color:#4b5563}
+html.tema-scuro .bg-gray-50{background-color:#111827}
+html.tema-scuro .bg-gray-50\/40{background-color:rgba(17,24,39,0.4)}
+html.tema-scuro .bg-gray-50\/50{background-color:rgba(17,24,39,0.5)}
+html.tema-scuro .disabled\:bg-gray-50:disabled{background-color:#111827}
+html.tema-scuro .hover\:bg-gray-50:hover{background-color:#374151}
+html.tema-scuro .hover\:bg-gray-50\/50:hover{background-color:rgba(55,65,81,0.5)}
+html.tema-scuro .bg-green-100{background-color:rgba(34,197,94,0.18)}
+html.tema-scuro .hover\:bg-green-100:hover{background-color:rgba(34,197,94,0.26)}
+html.tema-scuro .bg-green-200{background-color:rgba(34,197,94,0.28)}
+html.tema-scuro .hover\:bg-green-200:hover{background-color:rgba(34,197,94,0.36)}
+html.tema-scuro .bg-green-50{background-color:rgba(34,197,94,0.12)}
+html.tema-scuro .bg-green-50\/20{background-color:rgba(34,197,94,0.12)}
+html.tema-scuro .bg-green-50\/30{background-color:rgba(34,197,94,0.12)}
+html.tema-scuro .hover\:bg-green-50:hover{background-color:rgba(34,197,94,0.2)}
+html.tema-scuro .hover\:bg-indigo-100:hover{background-color:rgba(99,102,241,0.26)}
+html.tema-scuro .bg-indigo-50{background-color:rgba(99,102,241,0.12)}
+html.tema-scuro .bg-orange-100{background-color:rgba(249,115,22,0.18)}
+html.tema-scuro .hover\:bg-orange-200:hover{background-color:rgba(249,115,22,0.36)}
+html.tema-scuro .bg-orange-50{background-color:rgba(249,115,22,0.12)}
+html.tema-scuro .hover\:bg-orange-50:hover{background-color:rgba(249,115,22,0.2)}
+html.tema-scuro .bg-purple-100{background-color:rgba(168,85,247,0.18)}
+html.tema-scuro .hover\:bg-purple-100:hover{background-color:rgba(168,85,247,0.26)}
+html.tema-scuro .bg-purple-50{background-color:rgba(168,85,247,0.12)}
+html.tema-scuro .bg-red-100{background-color:rgba(239,68,68,0.18)}
+html.tema-scuro .hover\:bg-red-100:hover{background-color:rgba(239,68,68,0.26)}
+html.tema-scuro .hover\:bg-red-200:hover{background-color:rgba(239,68,68,0.36)}
+html.tema-scuro .bg-red-300{background-color:rgba(239,68,68,0.4)}
+html.tema-scuro .bg-red-50{background-color:rgba(239,68,68,0.12)}
+html.tema-scuro .hover\:bg-red-50:hover{background-color:rgba(239,68,68,0.2)}
+html.tema-scuro .bg-teal-100{background-color:rgba(20,184,166,0.18)}
+html.tema-scuro .bg-white{background-color:#1f2937}
+html.tema-scuro .hover\:bg-white:hover{background-color:#374151}
+html.tema-scuro .bg-yellow-100{background-color:rgba(234,179,8,0.18)}
+html.tema-scuro .bg-yellow-50{background-color:rgba(234,179,8,0.12)}
+html.tema-scuro .hover\:bg-yellow-50:hover{background-color:rgba(234,179,8,0.2)}
+html.tema-scuro .border-amber-100{border-color:rgba(245,158,11,0.45)}
+html.tema-scuro .border-amber-200{border-color:rgba(245,158,11,0.45)}
+html.tema-scuro .border-amber-300{border-color:rgba(245,158,11,0.45)}
+html.tema-scuro .hover\:border-amber-300:hover{border-color:rgba(245,158,11,0.45)}
+html.tema-scuro .border-blue-100{border-color:rgba(59,130,246,0.45)}
+html.tema-scuro .border-blue-200{border-color:rgba(59,130,246,0.45)}
+html.tema-scuro .hover\:border-blue-200:hover{border-color:rgba(59,130,246,0.45)}
+html.tema-scuro .border-blue-300{border-color:rgba(59,130,246,0.45)}
+html.tema-scuro .hover\:border-blue-300:hover{border-color:rgba(59,130,246,0.45)}
+html.tema-scuro .border-emerald-300{border-color:rgba(16,185,129,0.45)}
+html.tema-scuro .border-gray-100{border-color:#1f2937}
+html.tema-scuro .border-gray-200{border-color:#374151}
+html.tema-scuro .border-gray-300{border-color:#4b5563}
+html.tema-scuro .disabled\:hover\:border-gray-300:hover:disabled{border-color:#4b5563}
+html.tema-scuro .hover\:border-gray-300:hover{border-color:#4b5563}
+html.tema-scuro .hover\:border-gray-400:hover{border-color:#6b7280}
+html.tema-scuro .border-gray-50{border-color:#1f2937}
+html.tema-scuro .border-green-100{border-color:rgba(34,197,94,0.45)}
+html.tema-scuro .border-green-200{border-color:rgba(34,197,94,0.45)}
+html.tema-scuro .border-green-300{border-color:rgba(34,197,94,0.45)}
+html.tema-scuro .hover\:border-green-300:hover{border-color:rgba(34,197,94,0.45)}
+html.tema-scuro .border-indigo-100{border-color:rgba(99,102,241,0.45)}
+html.tema-scuro .border-orange-300{border-color:rgba(249,115,22,0.45)}
+html.tema-scuro .border-purple-200{border-color:rgba(168,85,247,0.45)}
+html.tema-scuro .border-purple-300{border-color:rgba(168,85,247,0.45)}
+html.tema-scuro .border-red-100{border-color:rgba(239,68,68,0.45)}
+html.tema-scuro .border-red-200{border-color:rgba(239,68,68,0.45)}
+html.tema-scuro .hover\:border-red-200:hover{border-color:rgba(239,68,68,0.45)}
+html.tema-scuro .border-red-300{border-color:rgba(239,68,68,0.45)}
+html.tema-scuro .hover\:border-red-300:hover{border-color:rgba(239,68,68,0.45)}
+html.tema-scuro .border-yellow-200{border-color:rgba(234,179,8,0.45)}
+html.tema-scuro .divide-gray-50 > :not([hidden]) ~ :not([hidden]){border-color:#1f2937}
+html.tema-scuro .from-green-50{--tw-gradient-from:rgba(34,197,94,0.12) var(--tw-gradient-from-position);--tw-gradient-to:transparent var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}
+html.tema-scuro .focus\:ring-blue-100:focus{--tw-ring-color:rgba(59,130,246,0.45)}
+html.tema-scuro .ring-blue-200{--tw-ring-color:rgba(59,130,246,0.45)}
+html.tema-scuro .focus\:ring-blue-300:focus{--tw-ring-color:rgba(59,130,246,0.45)}
+html.tema-scuro .focus\:ring-green-100:focus{--tw-ring-color:rgba(34,197,94,0.45)}
+html.tema-scuro .focus\:ring-green-300:focus{--tw-ring-color:rgba(34,197,94,0.45)}
+html.tema-scuro .focus\:ring-orange-300:focus{--tw-ring-color:rgba(249,115,22,0.45)}
+html.tema-scuro .focus\:ring-purple-300:focus{--tw-ring-color:rgba(168,85,247,0.45)}
+html.tema-scuro .text-amber-500{color:#fbbf24}
+html.tema-scuro .text-amber-600{color:#fcd34d}
+html.tema-scuro .text-amber-700{color:#fcd34d}
+html.tema-scuro .text-amber-800{color:#fcd34d}
+html.tema-scuro .hover\:text-amber-800:hover{color:#fcd34d}
+html.tema-scuro .text-amber-900{color:#fcd34d}
+html.tema-scuro .text-blue-500{color:#60a5fa}
+html.tema-scuro .active\:text-blue-500:active{color:#60a5fa}
+html.tema-scuro .hover\:text-blue-500:hover{color:#60a5fa}
+html.tema-scuro .text-blue-600{color:#93c5fd}
+html.tema-scuro .hover\:text-blue-600:hover{color:#93c5fd}
+html.tema-scuro .text-blue-700{color:#93c5fd}
+html.tema-scuro .hover\:text-blue-700:hover{color:#93c5fd}
+html.tema-scuro .text-blue-800{color:#93c5fd}
+html.tema-scuro .text-emerald-600{color:#6ee7b7}
+html.tema-scuro .text-emerald-700{color:#6ee7b7}
+html.tema-scuro .text-gray-200{color:#4b5563}
+html.tema-scuro .text-gray-300{color:#4b5563}
+html.tema-scuro .text-gray-400{color:#6b7280}
+html.tema-scuro .disabled\:text-gray-400:disabled{color:#6b7280}
+html.tema-scuro .text-gray-500{color:#9ca3af}
+html.tema-scuro .text-gray-600{color:#9ca3af}
+html.tema-scuro .hover\:text-gray-600:hover{color:#9ca3af}
+html.tema-scuro .text-gray-700{color:#d1d5db}
+html.tema-scuro .hover\:text-gray-700:hover{color:#d1d5db}
+html.tema-scuro .text-gray-800{color:#e5e7eb}
+html.tema-scuro .hover\:text-gray-800:hover{color:#e5e7eb}
+html.tema-scuro .text-gray-900{color:#f3f4f6}
+html.tema-scuro .text-green-500{color:#4ade80}
+html.tema-scuro .text-green-600{color:#86efac}
+html.tema-scuro .hover\:text-green-600:hover{color:#86efac}
+html.tema-scuro .text-green-700{color:#86efac}
+html.tema-scuro .hover\:text-green-700:hover{color:#86efac}
+html.tema-scuro .text-green-800{color:#86efac}
+html.tema-scuro .text-green-900{color:#86efac}
+html.tema-scuro .text-indigo-500{color:#818cf8}
+html.tema-scuro .text-indigo-600{color:#a5b4fc}
+html.tema-scuro .text-indigo-700{color:#a5b4fc}
+html.tema-scuro .text-orange-500{color:#fb923c}
+html.tema-scuro .text-orange-600{color:#fdba74}
+html.tema-scuro .text-orange-700{color:#fdba74}
+html.tema-scuro .text-orange-800{color:#fdba74}
+html.tema-scuro .text-purple-500{color:#c084fc}
+html.tema-scuro .text-purple-600{color:#d8b4fe}
+html.tema-scuro .text-purple-700{color:#d8b4fe}
+html.tema-scuro .text-purple-800{color:#d8b4fe}
+html.tema-scuro .text-red-500{color:#f87171}
+html.tema-scuro .hover\:text-red-500:hover{color:#f87171}
+html.tema-scuro .text-red-600{color:#fca5a5}
+html.tema-scuro .hover\:text-red-600:hover{color:#fca5a5}
+html.tema-scuro .text-red-700{color:#fca5a5}
+html.tema-scuro .text-red-800{color:#fca5a5}
+html.tema-scuro .text-teal-800{color:#5eead4}
+html.tema-scuro .text-yellow-700{color:#fde047}
+html.tema-scuro .to-emerald-100{--tw-gradient-to:rgba(16,185,129,0.18) var(--tw-gradient-to-position)}
